@@ -193,13 +193,14 @@ public partial class MainWindow
                 }
             }
             // and this one: unsaved changes are saved or asked about now
-            if (!await ConfirmDiscardAsync()) { RelaunchClosed(); _updating = false; UpdateStatus(); return; }
+            if (!await ConfirmDiscardAllAsync()) { RelaunchClosed(); _updating = false; UpdateStatus(); return; }
             WriteRelaunch();
 
             var psi = new ProcessStartInfo(file) { UseShellExecute = true };
             foreach (var a in new[] { "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/GMWAITPID=" + Environment.ProcessId, "/GMRELAUNCH=1" })
                 psi.ArgumentList.Add(a);
             Process.Start(psi);
+            SaveTabSession();   // OnClosing skips it once the close is confirmed
             _closingConfirmed = true;
             Close();
         }
@@ -248,7 +249,7 @@ public partial class MainWindow
             var args = new List<string>();
             if (Settings.Profile != null) { args.Add("--profile"); args.Add(Settings.Profile); }
             if (Settings.IsSecondary) args.Add("--new-window");
-            if (_path != null && File.Exists(_path)) args.Add(_path);
+            args.AddRange(TabFiles());   // every tab comes back, the shown one last (and shown)
             File.WriteAllText(RelaunchFile(Environment.ProcessId), JsonSerializer.Serialize(args));
         }
         catch { }

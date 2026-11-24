@@ -35,7 +35,7 @@ public partial class MainWindow
             if (Keyboard.Modifiers != ModifierKeys.Control || Web.IsMouseOver) return;
             StepZoom(e.Delta > 0 ? 1 : -1); e.Handled = true;
         };
-        Web.ZoomFactorChanged += (_, _) => SyncZoom();
+        // (each tab's page reports its zoom changes: MainWindow.Tabs.cs CreateView)
         LocalizeFit();
         SyncZoom();
     }

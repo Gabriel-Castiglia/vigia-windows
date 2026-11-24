@@ -1,17 +1,30 @@
-// Vigia -- interface text in English and Spanish.
+// Vigia -- interface text in English and Spanish (Japanese: StringsJa.cs).
 // Copyright (C) 2026 Gabriel Castiglia. Licensed under the GNU GPL, version 2 only.
 // Date: November 10, 2026
 // SPDX-License-Identifier: GPL-2.0-only
 
 namespace Vigia;
 
-/// <summary>All user-visible text, English and Spanish.</summary>
-public static class Strings
+/// <summary>All user-visible text: English and Spanish here, Japanese in StringsJa.cs (same keys).</summary>
+public static partial class Strings
 {
     private static readonly Dictionary<string, (string En, string Es)> T = new()
     {
         ["File"] = ("_File", "_Archivo"),
-        ["New"] = ("_New", "_Nuevo"),
+        ["New"] = ("_New tab", "_Nueva pestaña"),
+        ["TabNew"] = ("New tab", "Nueva pestaña"),
+        ["TabClose"] = ("_Close tab", "Cerrar pes_taña"),
+        ["TabCloseOthers"] = ("Close the other tabs", "Cerrar las otras pestañas"),
+        ["TabCloseRight"] = ("Close the tabs to the right", "Cerrar las pestañas de la derecha"),
+        ["TabCloseAll"] = ("Close all tabs", "Cerrar todas las pestañas"),
+        ["TabReopen"] = ("Reopen closed _tab", "R_eabrir la pestaña cerrada"),
+        ["TabNoClosed"] = ("No closed tab to reopen", "No hay ninguna pestaña cerrada para reabrir"),
+        ["TabList"] = ("All the tabs", "Todas las pestañas"),
+        ["RestoreTabs"] = ("Reopen ta_bs at start", "Reabrir las pestañas a_l iniciar"),
+        ["RestoreTabsTip"] = ("Closing the window keeps its tabs: the next start opens the same files again. Off: closing the window closes every tab.",
+                              "Cerrar la ventana conserva sus pestañas: el próximo arranque vuelve a abrir los mismos archivos. Apagado: cerrar la ventana cierra todas las pestañas."),
+        ["RestoreTabsOn"] = ("The tabs will open again at the next start", "Las pestañas se van a volver a abrir en el próximo arranque"),
+        ["RestoreTabsOff"] = ("Closing the window closes every tab", "Cerrar la ventana cierra todas las pestañas"),
         ["NewWindow"] = ("New _window", "Nueva _ventana"),
         ["Open"] = ("_Open…", "_Abrir…"),
         ["Recent"] = ("Open _recent", "Abrir _reciente"),
@@ -63,6 +76,8 @@ public static class Strings
         ["FolderMissing"] = ("The folder no longer exists:\n{0}", "La carpeta ya no existe:\n{0}"),
         ["Refresh"] = ("Refresh", "Actualizar"),
         ["CollapseAll"] = ("Collapse all", "Contraer todo"),
+        ["ExpandAll"] = ("Expand all", "Expandir todo"),
+        ["ExpandCapped"] = ("Expanded the first {0} folders; open the rest by hand", "Se expandieron las primeras {0} carpetas; el resto se abre a mano"),
         ["FileOpen"] = ("_Open", "_Abrir"),
         ["OpenNewWindow"] = ("Open in new window", "Abrir en otra ventana"),
         ["CopyPath"] = ("Copy path", "Copiar ruta"),
@@ -301,8 +316,22 @@ public static class Strings
 
     public static string Lang { get; set; } = "en";
 
-    public static string Get(string key) =>
-        T.TryGetValue(key, out var v) ? (Lang == "es" ? v.Es : v.En) : key;
+    /// <summary>The interface languages, in the order of the Language menu: code and name in that language.</summary>
+    public static readonly (string Code, string Name)[] Languages = { ("en", "English"), ("es", "Español"), ("ja", "日本語") };
 
-    public static string Plain(string key) => Get(key).Replace("_", "");
+    public static string Get(string key)
+    {
+        if (!T.TryGetValue(key, out var v)) return key;
+        if (Lang == "ja") return Ja.TryGetValue(key, out var j) ? j : v.En;
+        return Lang == "es" ? v.Es : v.En;
+    }
+
+    /// <summary>Keys with no Japanese text (the self-test expects none).</summary>
+    internal static IEnumerable<string> MissingJa() => T.Keys.Where(k => !Ja.ContainsKey(k)).Concat(Ja.Keys.Where(k => !T.ContainsKey(k)));
+
+    /// <summary>The language for a culture: Japanese and Spanish when Windows is in one of them, English otherwise.</summary>
+    public static string ForCulture(string twoLetter) => twoLetter is "es" or "ja" ? twoLetter : "en";
+
+    /// <summary>The text without its access key: "_Open" → "Open", and the Japanese "開く(_O)" → "開く".</summary>
+    public static string Plain(string key) => System.Text.RegularExpressions.Regex.Replace(Get(key), @"\(_[A-Za-z0-9]\)", "").Replace("_", "");
 }

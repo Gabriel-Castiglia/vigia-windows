@@ -1,7 +1,7 @@
 <p align="center"><img src="assets/vigia.png" width="140" alt="Vigía"></p>
 
 <h1 align="center">Vigía</h1>
-<p align="center"><b>Write Markdown visually. See it like GitHub.</b><br><i>Escribí Markdown en forma visual. Miralo como en GitHub.</i></p>
+<p align="center"><b>Write Markdown visually. See it like GitHub.</b><br><i>Escribí Markdown en forma visual. Miralo como en GitHub.</i><br><i>Markdown を見たまま書いて、GitHub と同じ見た目で読む。</i></p>
 <p align="center"><i>Until version 2.2 it was called Gryphmark. · Hasta la versión 2.2 se llamaba Gryphmark.</i></p>
 
 <p align="center"><img src="docs/img/visual_light_en.png" width="520" alt="The visual editor"></p>
@@ -25,7 +25,8 @@ follows tools that save by writing a new file and renaming it over the old one.
 **macOS version:** <https://github.com/Gabriel-Castiglia/vigia> (Apple silicon only).
 
 - Visual editor, Markdown source with live preview, and read-only GitHub preview (`Ctrl+1/2/3`)
-- English and Spanish interface, switchable at runtime
+- English, Spanish and Japanese interface, switchable at runtime
+- **Tabs**: several documents in one window, each with its own undo history and scroll position (`Ctrl+N` new tab, `Ctrl+W` closes one, `Ctrl+Tab` / `Ctrl+PageDown` switch, `Ctrl+Shift+T` reopens the last one closed; drag a tab to move it, middle-click closes it). Closing the window closes them all; with *File → Reopen tabs at start* the next start opens the same files again
 - Relative images and links, also in other folders (`../`); `.md` links open in Vigía
 - Pictures by absolute path or `file:` address, with spaces in the path, as `![[picture.png|300]]` (Obsidian, looked for in the open folders) or `![alt|300](a.png)`; a missing one shows its name in a dashed box, a click opens it in its viewer
 - Tables fit the column: a long path or piece of code in a cell breaks where it has to instead of pushing the table behind a scrollbar
@@ -81,7 +82,8 @@ que guardan escribiendo un archivo nuevo y renombrándolo encima del viejo.
 **Versión para macOS:** <https://github.com/Gabriel-Castiglia/vigia> (solo Apple silicon).
 
 - Editor visual, código Markdown con vista previa en vivo y vista GitHub de solo lectura (`Ctrl+1/2/3`)
-- Interfaz en inglés y en español, se cambia sin reiniciar
+- Interfaz en inglés, español y japonés, se cambia sin reiniciar
+- **Pestañas**: varios documentos en una ventana, cada uno con su propio deshacer y su posición (`Ctrl+N` pestaña nueva, `Ctrl+W` cierra una, `Ctrl+Tab` / `Ctrl+AvPág` cambian, `Ctrl+Shift+T` reabre la última cerrada; se mueven arrastrándolas y el clic del medio las cierra). Cerrar la ventana las cierra todas; con *Archivo → Reabrir las pestañas al iniciar*, el próximo arranque vuelve a abrir los mismos archivos
 - Imágenes y enlaces relativos, también en otras carpetas (`../`); los enlaces a `.md` se abren en Vigía
 - Imágenes con ruta absoluta o dirección `file:`, con espacios en la ruta, como `![[imagen.png|300]]` (Obsidian, se buscan en las carpetas abiertas) o `![alt|300](a.png)`; una que falta muestra su nombre en un recuadro punteado, y un clic la abre en su visor
 - Las tablas entran en la columna: una ruta o un código largo dentro de una celda se corta donde hace falta, en vez de mandar la tabla detrás de una barra de desplazamiento
@@ -122,7 +124,46 @@ Las versiones con que se compiló la versión publicada están abajo, en *Build 
 Hasta la versión 1.1.1 Vigía se llamaba Quillforge. El instalador nuevo quita la versión anterior y la
 configuración se copia sola.
 
-## Project layout / Estructura
+## 日本語
+
+Vigía は Windows 用の Markdown ビューアー兼エディターです。見出し、太字、リスト、表、コードなどの書式をボタンで付けると、
+Markdown のタグは Vigía が書きます。文書は GitHub とまったく同じように、ライトまたはダークのテーマで表示されます。
+
+**リアルタイムの再読み込み。** AI アシスタントなどほかのプログラムが開いているファイルを変更すると、Vigía は新しいテキストをすぐに表示し、
+読んでいた位置はそのままで、変わった部分を数秒間緑色で示します。新しいファイルに書いてから古いファイルの上に名前を変えて保存するツールにも追従します。
+
+**ダウンロード:** インストーラーは [Releases](https://github.com/Gabriel-Castiglia/vigia-windows/releases/latest) にあります。
+
+- ビジュアル エディター、リアルタイム プレビュー付きの Markdown ソース、読み取り専用の GitHub プレビュー（`Ctrl+1/2/3`）
+- 英語、スペイン語、日本語の画面。再起動せずに切り替えられます
+- **タブ**: 1 つのウィンドウで複数の文書を、それぞれ自分の元に戻す履歴とスクロール位置付きで（`Ctrl+N` 新しいタブ、`Ctrl+W` 閉じる、`Ctrl+Tab` / `Ctrl+PageDown` 切り替え、`Ctrl+Shift+T` 最後に閉じたタブを開き直す。ドラッグで移動、中クリックで閉じる）。ウィンドウを閉じるとすべて閉じます。*ファイル → 起動時にタブを復元* をオンにすると、次回の起動時に同じファイルが開きます
+- 相対パスの画像とリンク（別のフォルダー `../` も可）。`.md` へのリンクは Vigía で開きます
+- 絶対パスや `file:` アドレスの画像（パスに空白があっても可）、`![[picture.png|300]]`（Obsidian 形式。開いているフォルダーから探します）や `![alt|300](a.png)`。見つからない画像は名前を点線の枠で示し、クリックでビューアーで開きます
+- 表は列に収まります: セル内の長いパスやコードは必要な所で折り返し、表がスクロール バーの陰に隠れません
+- GitHub のアラート、Mermaid の図、数式、脚注、絵文字
+- **ファイル パネル**: VS Code や Obsidian のように、フォルダーを丸ごと開いてその中の Markdown ファイルを文書の横のツリーでたどれます（`Ctrl+Shift+E`）。複数のフォルダーを同時に開け、それぞれに色、固定、並べ替え、起動時に開くものの設定があります。1 つのボタンですべてのフォルダーを折りたたみ、すべて閉じているときはすべて展開します
+- **読み取り専用**: ツール バーの *編集 | 読み取り専用* で、誤って変更しないようにテキストをロックします（`Ctrl+Shift+L`）
+- **テーマ**: ライト、ダーク、自動（Windows に合わせる）と、Windows 全体のアイコンとアプリの強調表示の色を変える色のカタログ（*表示 → テーマ…*）。既定はスカイブルー
+- **専用インスタンス**: ファイルやフォルダーを、メイン ウィンドウとは別の専用の Vigía で開けます（`--profile "名前"`、またはファイル パネルで右クリック → デスクトップにショートカット）
+- ステータス バーの **ズーム バー**（`Ctrl` + マウス ホイールでも可）。ウィンドウが狭いと、入らないボタンは ⋯ メニューに入ります
+- 検索と置換、スペル チェック。上にファイル、下に目次のサイド バー（端と 2 つの間の線をドラッグできます）
+- **レイアウト**: ファイルと目次は本文のどちら側にも、上下にも左右にも置けます。ツール バーのレイアウト ボタンの図（または *表示 → レイアウト*）から選ぶか、パネルのタイトルをウィンドウの端までドラッグします。*表示 → 本文の幅* で列をウィンドウ全体まで広げられます
+- **お気に入り**: ファイルやフォルダーの行の星で、開いているすべてのフォルダーに共通の一覧に加え、ファイル パネルの先頭に表示します（ドラッグで並べ替え）。その下に任意の「最近使ったファイル」ブロック
+- **フォルダー内を検索**（`Ctrl+Shift+F`）: 開いているフォルダーのすべての Markdown ファイルを検索し、結果はファイルと行ごと。クリックで一致箇所を開きます。ほかと同じように配置できるパネルです
+- ファイル パネルでファイルとフォルダーの名前の変更と移動（`F2`、または錠前を開けてドラッグ）。元に戻す / やり直しができ、開いている文書はファイルに付いていきます
+- ファイル先頭のプロパティ（front matter）は折りたたんだ枠と表で表示し、書かれたとおりに保存します
+- **TXT に変換**: ファイル パネルでファイルを右クリック。GitHub 表示での見え方どおりの .txt を隣に書き出し、Markdown ファイルは変えません
+- **自動保存**（既定でオン）: 名前のあるファイルは、入力が止まって少しすると自動で保存されます。ツール バーの *自動保存* スイッチ（*ファイル → 自動保存* でも可）でオフにできます。ほかのプログラムが加えた変更を上書きすることはありません
+- 書式はそのまま: 保存で変わるのは編集した部分だけで、触れた行の一部分までに限られます（CRLF/BOM も維持）
+- GitHub 表示の **[[名前]] リンク** は、wiki のように、開いているフォルダーにあるその名前の Markdown ファイルを開きます（見つからないものは赤）
+- 文書内のリンクで開くのは Web ページ、メール、ほかの Markdown ファイル、画像、PDF だけです。それ以外のファイルへのリンクは、実行せずにエクスプローラーで表示します
+- 異常終了からの復元、単一インスタンス、**自動でインストールされる更新**（公開版の SHA-256 で照合し、終わると開いていたウィンドウをすべて開き直します）
+- 自己完結した HTML へのエクスポート、印刷 / PDF として保存
+- ユーザーごとのインストーラー（管理者権限は不要）、`.md` の関連付けは任意
+- マニュアル: [`docs/Vigia_Manual_JA.pdf`](docs/Vigia_Manual_JA.pdf)
+
+**ビルド** の手順と必要なツールは、上の English の節を参照してください。
+
 
 | Path | Content |
 |---|---|
@@ -130,23 +171,23 @@ configuración se copia sola.
 | `_npm/` | Web dependencies and esbuild entry (`entry.js`) |
 | `installer/` | Inno Setup script and wizard art |
 | `tools/` | Icon, wizard art and manual generators; `jstest.py`, a headless test of the editor page |
-| `docs/` | Manuals (HTML + PDF, EN/ES) and screenshots |
+| `docs/` | Manuals (HTML + PDF, EN/ES/JA) and screenshots |
 | `out/` | Build output: publish folder and installer |
 
 ## Build tools / Herramientas de compilación
 
-Vigía 3.1.0 was built and tested with / se compiló y probó con:
+Vigía 3.2.0 was built and tested with / se compiló y probó con:
 
 | Tool | Version |
 |---|---|
 | Windows 11 Pro | x64 |
-| .NET SDK / runtime (self-contained, net10.0-windows) | 10.0.404 / 10.0.15 |
+| .NET SDK / runtime (self-contained, net10.0-windows) | 11.0.100 / 10.0.15 |
 | Microsoft.Web.WebView2 (NuGet) | 1.0.4314.35 |
-| Node.js / npm (web bundle, unchanged since 2.0.0) | 26.12.1 / 11.20.0 |
+| Node.js / npm (web bundle) | 26.12.1 / 11.20.0 |
 | esbuild | 0.25.5 |
 | Inno Setup | 6.7.3 |
-| Google Chrome (manual PDFs) | 158.0.8127.37 |
-| Python (`-Art` only) | 3.13.17, Pillow 12.3.0, numpy 2.5.4, scipy 1.18.1, opencv-python 5.0.0 |
+| Microsoft Edge (manual PDFs) | 158.0.4370.33 |
+| Python (`-Art` only; not used for 3.2.0, the art did not change) | 3.13.17, Pillow 12.3.0, numpy 2.5.4, scipy 1.18.1, opencv-python 5.0.0 |
 
 Web libraries / Bibliotecas web (exact versions in `_npm/package-lock.json`): TOAST UI Editor 3.2.2,
 marked 15.0.12, KaTeX 0.19.1, Mermaid 12.3.0, highlight.js 11.11.1, jsdiff 9.0.0, DOMPurify 3.4.17,

@@ -36,6 +36,9 @@ public partial class MainWindow
         return await cond();
     }
 
+    /// <summary>--render-chrome: the window in the language just set in Strings.Lang (menus, toolbar, panes, tabs).</summary>
+    internal void RelocalizeForTest() { BuildMenu(); LocalizeFeatures(); RefreshTabs(); UpdateStatus(); }
+
     private async Task<int> JsInt(string expr) => int.TryParse(await Js(expr), out var n) ? n : -1;
 
     internal async Task RunSelfTestAsync()
@@ -49,6 +52,15 @@ public partial class MainWindow
             int aware = GetAwarenessFromDpiAwarenessContext(GetWindowDpiAwarenessContext(hwnd));
             Check("dpi: per-monitor awareness", aware == 2, $"awareness {aware}");
 
+            // Japanese: every key translated, access keys in the Japanese form, the language picked from Windows
+            var missingJa = Strings.MissingJa().ToList();
+            Check("japanese: every interface text has a Japanese one", missingJa.Count == 0, string.Join(", ", missingJa));
+            var keepLang = Strings.Lang; Strings.Lang = "ja";
+            bool jaPlain = Strings.Plain("Open") == "開く…" && Strings.Plain("Files") == "ファイル パネル" && Strings.Get("File") == "ファイル(_F)";
+            Strings.Lang = keepLang;
+            Check("japanese: access keys \"(_F)\" are left out of tooltips and buttons", jaPlain && Strings.Plain("Open") == Strings.Get("Open").Replace("_", ""), "");
+            Check("japanese: chosen from a Japanese Windows, and listed in the Language menu",
+                  Strings.ForCulture("ja") == "ja" && Strings.ForCulture("es") == "es" && Strings.ForCulture("fr") == "en" && Strings.Languages.Any(l => l.Code == "ja"), "");
             Check("autosave: on by default", new Settings().AutoSave);
             _settings.AutoSave = true; AutoSaveBtn.IsChecked = true;
             await SetReadOnly(false); await SetMode("visual");
@@ -264,6 +276,77 @@ public partial class MainWindow
             ok = await WaitFor(() => Task.FromResult(string.Equals(_path, w2, StringComparison.OrdinalIgnoreCase)), 4);
             Check("wiki: a link opens the file of that name", ok, _path ?? "(none)");
             await SetMode("visual");
+
+            // tabs: a file per tab, each keeps its own document and unsaved text, a file is never open twice
+            var tabsDir = Path.Combine(tmp, "tabs"); var deep = Path.Combine(tabsDir, "sub", "deeper");
+            Directory.CreateDirectory(deep);
+            var ta = Path.Combine(tabsDir, "a.md"); var tb = Path.Combine(tabsDir, "b.md");
+            File.WriteAllText(ta, "# Tab A\n\nalpha\n"); File.WriteAllText(tb, "# Tab B\n\nbeta\n");
+            File.WriteAllText(Path.Combine(deep, "c.md"), "# C\n");
+            Check("tabs: reopening them at start is off by default", !new Settings().RestoreTabs);
+            bool oa = await OpenPathAsync(ta), ob = await OpenPathAsync(tb);
+            var tabA = FindTab(ta); var tabB = FindTab(tb);
+            Check("tabs: each file opens in a tab of its own, the last one shown",
+                  oa && ob && tabA != null && tabB != null && tabA != tabB && _cur == tabB && TabPanel.Children.Count == _tabs.Count,
+                  $"{oa} {ob} tabs {_tabs.Count} headers {TabPanel.Children.Count} path {_path}");
+            await ActivateAsync(tabA!);
+            ok = _path == ta && await JsInt("mdApp.getMarkdown().includes('alpha') ? 1 : 0") == 1 && tabA!.View!.Visibility == Visibility.Visible && tabB!.View!.Visibility != Visibility.Visible;
+            Check("tabs: switching shows the other document and hides the first", ok, _path ?? "(none)");
+            int count = _tabs.Count;
+            ok = await OpenPathAsync(tb);
+            Check("tabs: a file already open is shown again, not opened twice", ok && _cur == tabB && _tabs.Count == count, $"tabs {_tabs.Count}, was {count}");
+            AutoSaveBtn.IsChecked = false;
+            await Js("mdApp.focus(); mdApp.insertText('kept ')");
+            await WaitFor(() => Task.FromResult(_dirty), 3);
+            await ActivateAsync(tabA!); await ActivateAsync(tabB!);
+            ok = _dirty && await JsInt("mdApp.getMarkdown().includes('kept') ? 1 : 0") == 1 && tabB!.Dot!.Visibility == Visibility.Visible;
+            Check("tabs: a hidden tab keeps its unsaved changes, marked on its tab", ok, $"dirty {_dirty}");
+            AutoSaveBtn.IsChecked = true;   // writes what was pending
+            await WaitFor(() => Task.FromResult(!_dirty), 4);
+            await Task.Delay(600);
+            File.WriteAllText(ta, "# Tab A\n\nalpha changed outside\n");
+            bool noted = await WaitFor(() => Task.FromResult(tabA!.ChangedOnDisk), 4);
+            await ActivateAsync(tabA!);
+            ok = await WaitFor(async () => await JsInt("mdApp.getMarkdown().includes('outside') ? 1 : 0") == 1, 4);
+            Check("tabs: a change on disk to a hidden tab is noted, and shown when the tab is", noted && ok, $"noted {noted}, shown {ok}");
+            ok = await CloseTabAsync(tabB!);
+            Check("tabs: closing one takes it out", ok && FindTab(tb) == null && _tabs.Count == count - 1, $"tabs {_tabs.Count}");
+            await ReopenClosedTabAsync();
+            Check("tabs: Reopen closed tab brings it back", FindTab(tb) != null && _path == tb, _path ?? "(none)");
+
+            // the session: kept only with the option on, untitled tabs left out, the shown tab remembered
+            _settings.RestoreTabs = true; SaveTabSession();
+            ok = _settings.OpenTabs.Contains(ta, PathCmp) && _settings.OpenTabs.Contains(tb, PathCmp) && _settings.OpenTabs.All(SafeFileExists)
+                 && PathCmp.Equals(_settings.OpenTabs[_settings.ActiveTab], tb);
+            Check("tabs: with Reopen tabs at start on, the session keeps every file and the shown one", ok,
+                  string.Join(" | ", _settings.OpenTabs) + " active " + _settings.ActiveTab);
+            _settings.RestoreTabs = false; SaveTabSession();
+            Check("tabs: with it off, nothing is kept", _settings.OpenTabs.Count == 0, string.Join(" | ", _settings.OpenTabs));
+            Check("tabs: an update reopens every tab, the shown one last", TabFiles().LastOrDefault() == tb && TabFiles().Contains(ta), string.Join(" | ", TabFiles()));
+
+            // the tree's button: collapse all while something is open, expand all (every level) when all is closed
+            CloseAllFolders(); OpenFolder(tabsDir, showPanel: true); UpdateLayout();
+            CollapseAllTrees();
+            bool closedAll = !AnyExpanded() && (string)FilesCollapse.Content == "";
+            int opened = ExpandAllTrees();
+            bool deepOpen = false;
+            void Seek(System.Windows.Controls.ItemCollection items)
+            {
+                foreach (var i in items.OfType<System.Windows.Controls.TreeViewItem>())
+                {
+                    if (i.Tag is string p && PathCmp.Equals(p, deep) && i.IsExpanded) deepOpen = true;
+                    Seek(i.Items);
+                }
+            }
+            Seek(FilesTree.Items);
+            Check("tree: Collapse all, then Expand all opens every level; the button follows", closedAll && deepOpen && opened >= 3 && (string)FilesCollapse.Content == "",
+                  $"closed {closedAll}, deep {deepOpen}, opened {opened}, glyph {(int)((string)FilesCollapse.Content)[0]:X}");
+            ToggleExpandAll();
+            Check("tree: the button collapses again", !AnyExpanded() && (string)FilesCollapse.Content == "", "");
+
+            // closing every tab leaves one empty untitled document
+            await CloseTabsAsync(_tabs.AsEnumerable().Reverse());
+            Check("tabs: Close all tabs leaves one empty untitled tab", _tabs.Count == 1 && _path == null && !_dirty && TabPanel.Children.Count == 1, $"tabs {_tabs.Count} path {_path}");
         }
         catch (Exception ex) { Check("self-test ran to the end", false, ex.ToString()); }
         finally

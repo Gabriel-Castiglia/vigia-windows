@@ -18,15 +18,13 @@ namespace Vigia;
 /// <summary>Find/replace, outline, external-change watch, crash recovery and update check.</summary>
 public partial class MainWindow
 {
-    private bool _crlf, _bom;
-    private FileSystemWatcher? _watcher;
-    private string? _diskText;    // the text last read from or written to disk: the same text again is not a change
-    private long _lastEditSeq;     // the last edit the page reported (app.js editSeq)
+    // Per document, kept in its tab (MainWindow.Tabs.cs): _crlf and _bom (written back as the file had them), the
+    // watcher, _diskText (the text last read from or written to disk: the same text again is not a change),
+    // _lastEditSeq (the last edit the page reported, app.js editSeq) and the id of its recovery draft.
     private bool _saving;
     private readonly DispatcherTimer _autoSaveTimer = new() { Interval = TimeSpan.FromSeconds(1.5) };
     private readonly DispatcherTimer _recoveryTimer = new() { Interval = TimeSpan.FromSeconds(20) };
     private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(4) };
-    private readonly string _recoveryId = Guid.NewGuid().ToString("N");
     private static string RecoveryDir => Path.Combine(Settings.Dir, "recovery");
     public const string Repo = "Gabriel-Castiglia/vigia-windows";
 
@@ -85,7 +83,7 @@ public partial class MainWindow
     {
         _recoveryTimer.Stop();
         _autoSaveTimer.Stop();
-        _watcher?.Dispose(); _watcher = null;
+        foreach (var t in _tabs) { t.Watcher?.Dispose(); t.Watcher = null; }
     }
 
     private void Flash(string text)
@@ -178,27 +176,34 @@ public partial class MainWindow
     }
 
     // ------------------------------------------------------------------ external changes
-    private void Watch(string? path)
+    private void Watch(string? path) => WatchTab(_cur, path);
+
+    /// <summary>Watches a tab's file. A change while the tab is shown is handled at once; while it is hidden, it
+    /// is noted and handled when the tab is shown again (MainWindow.Tabs.cs ActivateAsync).</summary>
+    private void WatchTab(DocTab tab, string? path)
     {
-        _watcher?.Dispose(); _watcher = null;
+        tab.Watcher?.Dispose(); tab.Watcher = null;
         if (path == null) return;
         try
         {
-            _watcher = new FileSystemWatcher(Path.GetDirectoryName(path)!, Path.GetFileName(path))
+            var w = new FileSystemWatcher(Path.GetDirectoryName(path)!, Path.GetFileName(path))
             {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName,
-                EnableRaisingEvents = true,
             };
+            void Changed(bool maybeGone) => Dispatcher.BeginInvoke(() =>
+            {
+                if (tab.Watcher != w) return;   // watching another file by now
+                if (tab != _cur) { tab.ChangedOnDisk = true; return; }
+                if (maybeGone) OnPossiblyGone(path); else OnExternalChange(path);
+            });
             // Editors and AI assistants often save by writing a temporary file and renaming it over
             // this one, or by deleting and recreating it: every one of those is a change to reload.
-            _watcher.Changed += (_, _) => Dispatcher.BeginInvoke(() => OnExternalChange(path));
-            _watcher.Created += (_, _) => Dispatcher.BeginInvoke(() => OnExternalChange(path));
-            _watcher.Renamed += (_, e) => Dispatcher.BeginInvoke(() =>
-            {
-                if (string.Equals(e.FullPath, path, StringComparison.OrdinalIgnoreCase)) OnExternalChange(path);
-                else OnPossiblyGone(path);
-            });
-            _watcher.Deleted += (_, _) => Dispatcher.BeginInvoke(() => OnPossiblyGone(path));
+            w.Changed += (_, _) => Changed(false);
+            w.Created += (_, _) => Changed(false);
+            w.Renamed += (_, e) => Changed(!string.Equals(e.FullPath, path, StringComparison.OrdinalIgnoreCase));
+            w.Deleted += (_, _) => Changed(true);
+            tab.Watcher = w;
+            w.EnableRaisingEvents = true;
         }
         catch { /* network folders without notifications: nothing to watch */ }
     }
@@ -265,6 +270,7 @@ public partial class MainWindow
     /// every view. False while the other program still holds the file (tried again).</summary>
     private async Task<bool> ReloadFromDiskAsync(string path)
     {
+        using var busy = DocBusy();
         string text;
         try { text = ReadDocument(path); }
         catch (IOException) { return false; }
@@ -313,9 +319,12 @@ public partial class MainWindow
     private string DraftPath => Path.Combine(RecoveryDir, _recoveryId + ".md");
     private string DraftMeta => Path.Combine(RecoveryDir, _recoveryId + ".json");
 
+    /// <summary>The draft of the shown tab, every 20 s while it has unsaved changes (and when another tab is shown).
+    /// Each tab has its own draft.</summary>
     private async Task SaveRecoveryAsync()
     {
         if (!_dirty || !_ready) return;
+        using var busy = DocBusy();
         try
         {
             Directory.CreateDirectory(RecoveryDir);
@@ -331,12 +340,20 @@ public partial class MainWindow
         try { File.Delete(DraftPath); File.Delete(DraftMeta); } catch { }
     }
 
-    /// <summary>Called once the editor is ready: offer drafts left by a Vigia that is no longer running.</summary>
+    private void ClearAllRecovery()
+    {
+        foreach (var t in _tabs)
+            try { File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".md")); File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".json")); } catch { }
+    }
+
+    /// <summary>Called once the first page is ready: offer the drafts left by a Vigia that is no longer running,
+    /// one by one (it had a draft per tab). A draft taken opens in a tab of its own, marked as modified.</summary>
     private async Task OfferRecoveryAsync()
     {
         if (!Directory.Exists(RecoveryDir)) return;
         foreach (var meta in Directory.GetFiles(RecoveryDir, "*.json"))
         {
+            if (_tabs.Any(t => PathCmp.Equals(t.RecoveryId, Path.GetFileNameWithoutExtension(meta)))) continue;   // one of ours
             try
             {
                 using var doc = JsonDocument.Parse(File.ReadAllText(meta));
@@ -354,24 +371,28 @@ public partial class MainWindow
                 if (ans == MessageBoxResult.Yes && File.Exists(draft))
                 {
                     var text = File.ReadAllText(draft, Encoding.UTF8);
-                    if (orig != null && File.Exists(orig)) await LoadFileAsync(orig);
-                    await Js($"mdApp.load({Q(text)},{DocBaseJs(orig)})");
-                    _path = orig; _dirty = true;
-                    UpdateTitle(); UpdateStatus(); Flash(Strings.Get("Recovered"));
+                    bool ok;
+                    if (orig != null && File.Exists(orig)) ok = await OpenPathAsync(orig);   // its tab, or a new one
+                    else ok = await TabForContentAsync();
+                    if (ok)
+                    {
+                        await Js($"mdApp.load({Q(text)},{DocBaseJs(orig)})");
+                        _path = orig; _dirty = true;
+                        RefreshTabs(); UpdateTitle(); UpdateStatus(); Flash(Strings.Get("Recovered"));
+                    }
                 }
                 File.Delete(meta); File.Delete(draft);
-                if (ans == MessageBoxResult.Yes) break;
             }
             catch { try { File.Delete(meta); } catch { } }
         }
     }
 
     // ------------------------------------------------------------------ single instance
-    /// <summary>A second Vigia passed us a file (or just asked to be shown).</summary>
-    public void ActivateFromOtherInstance(string? path)
+    /// <summary>A second Vigia passed us its files and folders (or just asked to be shown): a tab per file.</summary>
+    public async void ActivateFromOtherInstance(IReadOnlyList<string> paths)
     {
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Activate(); Topmost = true; Topmost = false; Focus();
-        if (!string.IsNullOrEmpty(path)) OpenPath(path);
+        foreach (var p in paths.Where(p => !string.IsNullOrEmpty(p))) await OpenPathAsync(p);
     }
 }

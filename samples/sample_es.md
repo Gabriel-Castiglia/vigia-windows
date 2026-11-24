@@ -65,6 +65,10 @@ $$
 
 Abrí una carpeta entera con **Archivo → Abrir carpeta…** y sus archivos Markdown aparecen en un árbol a la izquierda, como en VS Code u Obsidian. Podés abrir varias carpetas; cada una tiene su color, y el botón **⋯** del panel las ordena, cambia los colores y elige qué se abre al iniciar. Clic en un archivo para abrirlo; `Ctrl+Shift+E` muestra u oculta el panel.
 
+## Pestañas
+
+Cada archivo se abre en su propia pestaña. `Ctrl+Tab` cambia de pestaña y `Ctrl+W` cierra una. Activá **Archivo → Reabrir las pestañas al iniciar** y el próximo arranque vuelve a abrir los mismos archivos.
+
 ---
 
 Para que este ejemplo no aparezca más en **Archivo → Abrir reciente**, elegí **Ocultar ejemplo**, justo debajo de él (o desmarcá **Ayuda → Mostrar el ejemplo en Abrir reciente**). Siempre lo podés volver a abrir desde **Ayuda → Documento de ejemplo**.

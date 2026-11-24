@@ -6,6 +6,8 @@
   'use strict';
   const host = window.chrome && window.chrome.webview;
   const post = (msg) => host && host.postMessage(msg);
+  // the page's own few texts, in the interface language (English when one is missing)
+  const say = (t) => t[state.lang] || t.en;
 
   let editor = null;
   let state = { lang: 'en', theme: 'light', mode: 'visual', spell: true, locked: false };
@@ -33,9 +35,11 @@
     document.getElementById('editorHost').innerHTML = '';
     let el = document.getElementById('editorError');
     if (!el) { el = document.createElement('div'); el.id = 'editorError'; document.body.insertBefore(el, document.getElementById('editorHost')); }
-    el.textContent = state.lang === 'es'
-      ? 'El editor no pudo abrir este archivo (falla de la biblioteca TOAST UI). La vista GitHub lo muestra completo. Esta vista no permite editarlo, y guardar deja el archivo como está en disco.'
-      : 'The editor could not open this file (a failure of the TOAST UI library). The GitHub view shows all of it. This view cannot edit it, and saving leaves the file as it is on disk.';
+    el.textContent = say({
+      en: 'The editor could not open this file (a failure of the TOAST UI library). The GitHub view shows all of it. This view cannot edit it, and saving leaves the file as it is on disk.',
+      es: 'El editor no pudo abrir este archivo (falla de la biblioteca TOAST UI). La vista GitHub lo muestra completo. Esta vista no permite editarlo, y guardar deja el archivo como está en disco.',
+      ja: 'エディターでこのファイルを開けませんでした（TOAST UI ライブラリの不具合）。GitHub 表示ではすべて表示されます。この表示では編集できず、保存してもディスク上のファイルはそのままです。',
+    });
     document.body.classList.add('editor-broken');
   }
 
@@ -161,7 +165,7 @@
     let name = img.getAttribute('alt') || '';
     try { name = name || decodeURIComponent((img.getAttribute('src') || '').split('/').pop()); } catch (e) { }
     s.className = 'gm-img-missing'; s.textContent = name || '?';
-    s.title = (state.lang === 'es' ? 'No se encuentra la imagen: ' : 'Picture not found: ') + (img.dataset.embed || img.getAttribute('src') || '');
+    s.title = say({ en: 'Picture not found: ', es: 'No se encuentra la imagen: ', ja: '画像が見つかりません: ' }) + (img.dataset.embed || img.getAttribute('src') || '');
     img.replaceWith(s);
   }
 
@@ -244,7 +248,7 @@
         initialEditType: state.mode === 'source' ? 'markdown' : 'wysiwyg',
         previewStyle: 'vertical',
         initialValue: markdown || '',
-        language: state.lang === 'es' ? 'es-ES' : 'en-US',
+        language: { es: 'es-ES', ja: 'ja-JP' }[state.lang] || 'en-US',
         theme: state.theme === 'dark' ? 'dark' : 'light',
         usageStatistics: false,
         hideModeSwitch: true,
@@ -340,7 +344,7 @@
   // GitHub view: the properties as a table, folded under a "Properties" line that names their keys.
   function frontMatterBlock(yaml) {
     const nodes = parseFrontMatter(yaml);
-    const title = state.lang === 'es' ? 'Propiedades' : 'Properties';
+    const title = say({ en: 'Properties', es: 'Propiedades', ja: 'プロパティ' });
     const keys = nodes.filter((n) => n.key !== null).map((n) => n.key).join(', ');
     const inner = nodes.length ? frontMatterHtml(nodes) : '<pre>' + escapeHtml(yaml) + '</pre>';
     return '<details class="gm-frontmatter"><summary>' + title + (keys ? ' <span>' + escapeHtml(keys) + '</span>' : '') + '</summary>' + inner + '</details>';
@@ -404,6 +408,11 @@
 
   function countWords() {
     const t = editorText().replace(/[#>*_`~\-\[\]()|]/g, ' ');
+    // Japanese and Chinese have no spaces between words: there the browser's word breaker counts them
+    if (/[\u3040-\u30ff\u3400-\u9fff]/.test(t) && window.Intl && Intl.Segmenter) {
+      let n = 0; for (const s of new Intl.Segmenter('ja', { granularity: 'word' }).segment(t)) if (s.isWordLike) n++;
+      return n;
+    }
     const m = t.match(/[\p{L}\p{N}]+/gu); return m ? m.length : 0;
   }
 
@@ -902,6 +911,8 @@
     replace(q, cs, r) { find.query = q; find.cs = !!cs; replaceCurrent(r); },
     replaceAll(q, cs, r) { find.query = q; find.cs = !!cs; return replaceAll(r); },
     scrollToHeading(i) { scrollToHeading(i); },
+    // the host shows this page's tab again: its Contents pane needs this document's headings
+    outline() { sendOutline(); },
     _view() { return pmView(); },   // for tools/jstest.py
     _headingText(s) { return headingText(s); },
     editorBroken() { return editorBroken; },
@@ -939,7 +950,14 @@
     if (e.key === 'F3') { e.preventDefault(); post({ type: 'cmd', cmd: e.shiftKey ? 'findprev' : 'findnext' }); return; }
     if (e.key === 'Escape') { post({ type: 'cmd', cmd: 'findclose' }); return; }
     if (!e.ctrlKey || e.altKey) return;
+    // tabs: Ctrl+Tab / Ctrl+Shift+Tab and Ctrl+PageDown / PageUp switch, Ctrl+Shift+T reopens the last one closed
+    if (e.key === 'Tab' || e.key === 'PageDown' || e.key === 'PageUp') {
+      e.preventDefault(); e.stopPropagation();
+      post({ type: 'cmd', cmd: (e.key === 'PageUp' || (e.key === 'Tab' && e.shiftKey)) ? 'prevtab' : 'nexttab' });
+      return;
+    }
     const k = e.key.toLowerCase();
+    if (k === 't' && e.shiftKey) { e.preventDefault(); post({ type: 'cmd', cmd: 'reopentab' }); return; }
     const map = { n: 'new', o: 'open', s: e.shiftKey ? 'saveas' : 'save', p: 'print', w: 'close', f: 'find', h: 'replace' };
     if (k === 'o' && e.shiftKey) { e.preventDefault(); post({ type: 'cmd', cmd: 'outline' }); return; }
     if (k === 'e' && e.shiftKey) { e.preventDefault(); post({ type: 'cmd', cmd: 'files' }); return; }

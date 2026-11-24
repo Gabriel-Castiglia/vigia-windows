@@ -1,4 +1,4 @@
-﻿# Vigía — full build: web bundle, icon, manuals (PDF), self-contained publish, installer.
+# Vigía — full build: web bundle, icon, manuals (PDF), self-contained publish, installer.
 # Usage:  powershell -ExecutionPolicy Bypass -File build.ps1 [-SkipNpm] [-Art]
 #   -SkipNpm  keep the web bundle in src/Vigia/wwwroot/lib as it is
 #   -Art      redraw the icons and the installer pictures (they are committed; needs Python with
@@ -70,7 +70,7 @@ $edge = @("${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe", "$en
           "$env:ProgramFiles\BraveSoftware\Brave-Browser\Application\brave.exe", "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\Application\brave.exe") |
     Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $edge) { throw "No Chromium browser (Edge, Chrome or Brave) to print the manuals" }
-foreach ($l in "EN", "ES") {
+foreach ($l in "EN", "ES", "JA") {
     $html = Join-Path $root "docs/Vigia_Manual_$l.html"
     $pdf = Join-Path $root "docs/Vigia_Manual_$l.pdf"
     if (Test-Path $pdf) { Remove-Item $pdf -Force }
@@ -85,7 +85,7 @@ if (Test-Path $pub) { Remove-Item $pub -Recurse -Force }
 dotnet publish "$root/src/Vigia/Vigia.csproj" -c Release -o $pub -p:Version=$Version -nologo -v q
 if ($LASTEXITCODE) { throw "dotnet publish failed" }
 New-Item -ItemType Directory -Force "$pub/docs" | Out-Null
-Copy-Item "$root/docs/Vigia_Manual_EN.pdf", "$root/docs/Vigia_Manual_ES.pdf" "$pub/docs/"
+Copy-Item "$root/docs/Vigia_Manual_EN.pdf", "$root/docs/Vigia_Manual_ES.pdf", "$root/docs/Vigia_Manual_JA.pdf" "$pub/docs/"
 
 # Optional code signing: set GM_SIGN_PFX (path to a .pfx) and GM_SIGN_PASS before building.
 function Sign($file) {

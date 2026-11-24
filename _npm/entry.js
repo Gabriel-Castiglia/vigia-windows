@@ -4,6 +4,7 @@
    SPDX-License-Identifier: GPL-2.0-only */
 import Editor from '@toast-ui/editor';
 import '@toast-ui/editor/dist/i18n/es-es';
+import '@toast-ui/editor/dist/i18n/ja-jp';
 import codeSyntaxHighlight from '@toast-ui/editor-plugin-code-syntax-highlight/dist/toastui-editor-plugin-code-syntax-highlight-all.js';
 import { Marked } from 'marked';
 import markedAlert from 'marked-alert';

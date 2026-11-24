@@ -12,7 +12,7 @@ namespace Vigia;
 
 public sealed class Settings
 {
-    public string Lang { get; set; } = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "es" ? "es" : "en";
+    public string Lang { get; set; } = Strings.ForCulture(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);   // en | es | ja
     public string Theme { get; set; } = "auto";      // light | dark | auto (follows Windows)
     public string Accent { get; set; } = Accents.Default;
     /// <summary>True once the colour was chosen in View → Theme; until then the default colour applies.</summary>
@@ -72,6 +72,13 @@ public sealed class Settings
     public bool Outline { get; set; } = true;
     public bool Spell { get; set; } = true;
     public bool AutoSave { get; set; } = true;   // saves a moment after the typing stops (MainWindow.AutoSave)
+    /// <summary>File → Reopen tabs at start: closing the window keeps the files of its tabs and the next start opens
+    /// them again (off by default: closing the window closes every tab). MainWindow.Tabs.cs.</summary>
+    public bool RestoreTabs { get; set; }
+    /// <summary>The files of the tabs when the window last closed, in tab order (only kept with RestoreTabs on).</summary>
+    public List<string> OpenTabs { get; set; } = new();
+    /// <summary>The tab that was shown, as an index into OpenTabs.</summary>
+    public int ActiveTab { get; set; }
     /// <summary>The sample document was opened once on first start.</summary>
     public bool SampleShown { get; set; }
     /// <summary>The user hid the sample from File → Open recent (Help → Sample document still opens it).</summary>
@@ -121,7 +128,7 @@ public sealed class Settings
     private static readonly HashSet<string> SessionKeys = new()
     {
         nameof(Folder), nameof(Folders), nameof(PinnedFolders), nameof(Width), nameof(Height), nameof(Left), nameof(Top), nameof(Maximized),
-        nameof(FilesPanel), nameof(FilesWidth), nameof(OutlineShare), nameof(SampleShown),
+        nameof(FilesPanel), nameof(FilesWidth), nameof(OutlineShare), nameof(SampleShown), nameof(OpenTabs), nameof(ActiveTab),
     };
 
     /// <summary>Vigia was called Gryphmark up to 2.2.1: the first time any window starts (the main one or a dedicated
@@ -184,6 +191,7 @@ public sealed class Settings
                 var main = Path.Combine(BaseDir, "settings.json");
                 var s = File.Exists(main) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(main)) ?? new Settings() : new Settings();
                 s.Folder = null; s.Folders = new(); s.PinnedFolders = new(); s.Recent = new(); s.RecentFolders = new();
+                s.OpenTabs = new(); s.ActiveTab = 0;
                 s.FilesPanel = false; s.SampleShown = true; s.StartupFolders = "restore";
                 return s;
             }

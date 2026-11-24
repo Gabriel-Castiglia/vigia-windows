@@ -78,9 +78,17 @@ public partial class MainWindow
             { Flash(string.Format(Strings.Get("NameExists"), Path.GetFileName(to))); return false; }
             if (isDir && IsUnder(to, from)) { Flash(Strings.Get("MoveIntoItself")); return false; }
 
-            bool openAffected = _path != null && (string.Equals(_path, from, StringComparison.OrdinalIgnoreCase) || (isDir && IsUnder(_path, from)));
+            bool Affected(string? p) => p != null && (string.Equals(p, from, StringComparison.OrdinalIgnoreCase) || (isDir && IsUnder(p, from)));
+            // a hidden tab of the moved file with unsaved changes is shown and saved first, as the shown one
+            foreach (var t in _tabs.Where(t => t != _cur && t.Dirty && Affected(t.Path)).ToList())
+            {
+                await ActivateAsync(t);
+                if (_cur != t || !await SaveAsync(false)) return false;
+            }
+            bool openAffected = Affected(_path);
             if (openAffected && _dirty && !await SaveAsync(false)) return false;
             if (openAffected) Watch(null);
+            foreach (var t in _tabs.Where(t => t != _cur && Affected(t.Path))) WatchTab(t, null);
 
             if (isDir)
             {
@@ -98,6 +106,7 @@ public partial class MainWindow
                 _settings.AddRecent(np); _settings.Save();
                 BuildMenu(); UpdateTitle(); UpdateStatus();
             }
+            await FollowMoveInTabs(from, to, isDir);   // the hidden tabs of the moved files
             FollowInLists(from, to, isDir);
             if (record) { _fileUndo.Push((from, to)); _fileRedo.Clear(); }
             UpdateFileOpButtons();
@@ -107,7 +116,7 @@ public partial class MainWindow
         }
         catch (Exception e)
         {
-            if (_path != null) Watch(_path);
+            foreach (var t in _tabs) if (t.Path != null && t.Watcher == null) WatchTab(t, t.Path);
             Flash(string.Format(Strings.Get("MoveFailed"), e.Message));
             return false;
         }

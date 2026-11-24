@@ -19,27 +19,27 @@ namespace Vigia;
 /// </summary>
 public static class Accents
 {
-    public sealed record Accent(string Key, string En, string Es, string Light, string Dark)
+    public sealed record Accent(string Key, string En, string Es, string Ja, string Light, string Dark)
     {
-        public string Name => Strings.Lang == "es" ? Es : En;
+        public string Name => Strings.Lang switch { "es" => Es, "ja" => Ja, _ => En };
     }
 
     public const string Default = "sky";      // the lighthouse against the sky (3.1.0; gold before)
 
     public static readonly Accent[] All =
     {
-        new("gold",   "Gold",     "Dorado",        "#9A6F00", "#E2B84C"),   // dark gold, the default until 3.0
-        new("purple", "Purple",   "Morado",        "#5B2A86", "#B392E0"),   // Advent purple
-        new("sky",    "Sky blue", "Celeste",       "#1A8CD8", "#5CB8F0"),   // sky blue, the default
-        new("ember",  "Orange",   "Naranja",       "#D9652F", "#F08A5D"),
-        new("red",    "Red",      "Rojo",          "#C8102E", "#F2545B"),
-        new("yellow", "Yellow",   "Amarillo",      "#B88A00", "#F5C842"),
-        new("green",  "Green",    "Verde",         "#1E8A43", "#4CC27A"),
-        new("teal",   "Teal",     "Verde azulado", "#00796B", "#4DB6AC"),
-        new("blue",   "Blue",     "Azul",          "#1F5FD1", "#6E9BFF"),
-        new("pink",   "Pink",     "Rosa",          "#C2185B", "#F06292"),
-        new("black",  "Black",    "Negro",         "#1D1D1F", "#C7C7CC"),
-        new("white",  "White",    "Blanco",        "#8E8E93", "#F5F5F7"),
+        new("gold",   "Gold",     "Dorado",        "ゴールド",    "#9A6F00", "#E2B84C"),   // dark gold, the default until 3.0
+        new("purple", "Purple",   "Morado",        "紫",       "#5B2A86", "#B392E0"),   // Advent purple
+        new("sky",    "Sky blue", "Celeste",       "スカイブルー",  "#1A8CD8", "#5CB8F0"),   // sky blue, the default
+        new("ember",  "Orange",   "Naranja",       "オレンジ",    "#D9652F", "#F08A5D"),
+        new("red",    "Red",      "Rojo",          "赤",       "#C8102E", "#F2545B"),
+        new("yellow", "Yellow",   "Amarillo",      "黄",       "#B88A00", "#F5C842"),
+        new("green",  "Green",    "Verde",         "緑",       "#1E8A43", "#4CC27A"),
+        new("teal",   "Teal",     "Verde azulado", "ティール",    "#00796B", "#4DB6AC"),
+        new("blue",   "Blue",     "Azul",          "青",       "#1F5FD1", "#6E9BFF"),
+        new("pink",   "Pink",     "Rosa",          "ピンク",     "#C2185B", "#F06292"),
+        new("black",  "Black",    "Negro",         "黒",       "#1D1D1F", "#C7C7CC"),
+        new("white",  "White",    "Blanco",        "白",       "#8E8E93", "#F5F5F7"),
     };
 
     public static Accent Get(string? key) => All.FirstOrDefault(a => a.Key == key) ?? All.First(a => a.Key == Default);

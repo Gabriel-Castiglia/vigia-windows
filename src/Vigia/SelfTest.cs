@@ -14,7 +14,8 @@ using System.Windows.Threading;
 
 namespace Vigia;
 
-/// <summary>Vigia.exe --render-chrome &lt;dir&gt;: renders the menu bar and every top-level popup to PNG (light and dark).</summary>
+/// <summary>Vigia.exe --render-chrome &lt;dir&gt;: renders the menu bar, every top-level popup, the dialogs, the Files panel,
+/// the layout pictures and the tab strip to PNG (light and dark, English, Spanish and Japanese).</summary>
 public static class SelfTest
 {
     public static void RenderChrome(MainWindow w, string dir)
@@ -24,40 +25,59 @@ public static class SelfTest
         {
             ThemeManager.Apply(w, dark);
             w.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
-            var menu = (Menu)w.FindName("MainMenu");
-            Save(menu, Path.Combine(dir, $"menubar_{(dark ? "dark" : "light")}.png"));
-            Save((FrameworkElement)w.FindName("ToolBarHost"), Path.Combine(dir, $"toolbar_{(dark ? "dark" : "light")}.png"));
-            // narrow window: the buttons that do not fit go into the overflow menu instead of overlapping
-            var bar = (FrameworkElement)w.FindName("ToolBarHost");
-            double keepW = bar.Width;
-            foreach (var narrow in new[] { 760.0, 560.0 })
-            {
-                bar.Width = narrow; bar.UpdateLayout(); w.FitToolbarForTest(); bar.UpdateLayout();
-                Save(bar, Path.Combine(dir, $"toolbar_{narrow}_{(dark ? "dark" : "light")}.png"));
-            }
-            bar.Width = keepW; bar.UpdateLayout(); w.FitToolbarForTest();
-            int i = 0;
-            foreach (MenuItem top in menu.Items)
-            {
-                top.IsSubmenuOpen = true;
-                w.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
-                top.ApplyTemplate();
-                if (top.Template.FindName("PART_Popup", top) is Popup p && p.Child is FrameworkElement child)
-                {
-                    child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                    child.Arrange(new Rect(child.DesiredSize));
-                    child.UpdateLayout();
-                    Save(child, Path.Combine(dir, $"popup{i}_{(dark ? "dark" : "light")}.png"), dark);
-                }
-                top.IsSubmenuOpen = false;
-                i++;
-            }
-            // About window and the mode-button tooltips, in both languages
+            // everything below in every language: the menus, the toolbar, the dialogs and the panes
             var keepLang = Strings.Lang;
-            foreach (var lang in new[] { "en", "es" })
+            foreach (var lang in new[] { "en", "es", "ja" })
             {
                 Strings.Lang = lang;
+                w.RelocalizeForTest();
+                w.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
                 string sfx = $"{lang}_{(dark ? "dark" : "light")}";
+                var menu = (Menu)w.FindName("MainMenu");
+                Save(menu, Path.Combine(dir, $"menubar_{sfx}.png"));
+                Save((FrameworkElement)w.FindName("ToolBarHost"), Path.Combine(dir, $"toolbar_{sfx}.png"));
+                Save((FrameworkElement)w.FindName("Status"), Path.Combine(dir, $"statusbar_{sfx}.png"));
+                // narrow window: the buttons that do not fit go into the overflow menu instead of overlapping
+                var bar = (FrameworkElement)w.FindName("ToolBarHost");
+                double keepW = bar.Width;
+                foreach (var narrow in new[] { 760.0, 560.0 })
+                {
+                    bar.Width = narrow; bar.UpdateLayout(); w.FitToolbarForTest(); bar.UpdateLayout();
+                    Save(bar, Path.Combine(dir, $"toolbar_{narrow}_{sfx}.png"));
+                }
+                bar.Width = keepW; bar.UpdateLayout(); w.FitToolbarForTest();
+                int i = 0;
+                foreach (MenuItem top in menu.Items)
+                {
+                    top.IsSubmenuOpen = true;
+                    w.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                    top.ApplyTemplate();
+                    if (top.Template.FindName("PART_Popup", top) is Popup p && p.Child is FrameworkElement child)
+                    {
+                        child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                        child.Arrange(new Rect(child.DesiredSize));
+                        child.UpdateLayout();
+                        Save(child, Path.Combine(dir, $"popup{i}_{sfx}.png"), dark);
+                    }
+                    top.IsSubmenuOpen = false;
+                    i++;
+                }
+                // the questions and the input dialogs
+                var dialogs = new (string Name, Window Dlg)[]
+                {
+                    ("ask_save", ChoiceDialog.ForTest(w, string.Format(Strings.Get("AskSave"), "Plan.md"), new[] { Strings.Get("DontSave"), Strings.Get("Cancel"), Strings.Get("SaveBtn") }, 1)),
+                    ("ask_changed", ChoiceDialog.ForTest(w, string.Format(Strings.Get("ChangedOnDisk"), "Plan.md"), new[] { Strings.Get("KeepMine"), Strings.Get("ReloadBtn") }, 0)),
+                    ("ask_update", ChoiceDialog.ForTest(w, string.Format(Strings.Get("UpdateAsk"), "9.9.9", "3.2.0"), new[] { Strings.Get("UpdateLater"), Strings.Get("UpdateNotes"), Strings.Get("UpdateNow") }, 0)),
+                    ("input_link", new InputDialog(w, Strings.Plain("Link"), new[] { (Strings.Get("LinkText"), "Vigía"), (Strings.Get("LinkUrl"), "https://") })),
+                    ("input_table", new InputDialog(w, Strings.Plain("Table"), new[] { (Strings.Get("Columns"), "3"), (Strings.Get("Rows"), "3") })),
+                };
+                foreach (var (name, dlg) in dialogs)
+                {
+                    var card = (FrameworkElement)dlg.Content;
+                    Layout(card);
+                    Save(card, Path.Combine(dir, $"{name}_{sfx}.png"), dark);
+                    dlg.Close();
+                }
                 var about = new AboutDialog(w, "1.6.0");
                 Layout(about.Card);
                 Save(about.Card, Path.Combine(dir, $"about_{sfx}.png"), dark);
@@ -114,6 +134,11 @@ public static class SelfTest
                 }
                 Save((FrameworkElement)w.FindName("LayoutBtn"), Path.Combine(dir, $"layout_button_{sfx}.png"), dark);
                 w.TestFolder(null);
+                // the tab strip: four documents, the second with unsaved changes
+                var strip = w.TabStripForTest(true);
+                w.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                Save(strip, Path.Combine(dir, $"tabs_{sfx}.png"));
+                w.TabStripForTest(false);
             }
             Strings.Lang = keepLang;
         }

@@ -57,9 +57,12 @@ public partial class MainWindow
         try { return Path.GetFullPath(joined); } catch { return null; }
     }
 
-    /// <summary>True when the open document may reach this path (its folder, or the panel's folders it is in).</summary>
-    private bool InReach(string path) =>
-        _path != null && Wiki.Reach(Path.GetDirectoryName(_path), _roots).Any(r => Wiki.Inside(path, r));
+    /// <summary>True when the shown document may reach this path (its folder, or the panel's folders it is in).</summary>
+    private bool InReach(string path) => InReach(path, _path);
+
+    /// <summary>The same for any document: each tab's page asks for its own document's files.</summary>
+    private bool InReach(string path, string? docPath) =>
+        docPath != null && Wiki.Reach(Path.GetDirectoryName(docPath), _roots).Any(r => Wiki.Inside(path, r));
 
     private void InitDocFiles(CoreWebView2 core)
     {
@@ -69,9 +72,10 @@ public partial class MainWindow
 
     private async void OnDocRequest(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
     {
-        var env = Web.CoreWebView2.Environment;
+        if (sender is not CoreWebView2 core) return;
+        var env = core.Environment;
         var path = DocPath(e.Request.Uri);
-        if (path == null || !(IsPicture(path) || InReach(path)))
+        if (path == null || !(IsPicture(path) || InReach(path, TabOf(core)?.Path)))
         {
             e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", "");
             return;

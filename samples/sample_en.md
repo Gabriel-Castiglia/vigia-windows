@@ -65,6 +65,10 @@ $$
 
 Open a whole folder with **File → Open folder…** and its Markdown files appear in a tree on the left, like in VS Code or Obsidian. You can open several folders; each one gets its own colour, and the **⋯** button of the panel sorts them, changes the colours and chooses what opens at start. Click a file to open it; `Ctrl+Shift+E` shows or hides the panel.
 
+## Tabs
+
+Each file opens in a tab of its own. `Ctrl+Tab` switches tabs and `Ctrl+W` closes one. Turn on **File → Reopen tabs at start** and the next start opens the same files again.
+
 ---
 
 To stop showing this sample in **File → Open recent**, choose **Hide sample** right below it (or untick **Help → Show sample in Open recent**). It is always available again from **Help → Sample document**.

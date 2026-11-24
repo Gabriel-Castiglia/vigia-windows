@@ -19,23 +19,20 @@ namespace Vigia;
 public partial class MainWindow : Window
 {
     private readonly Settings _settings = Settings.Load();
-    private string? _path;
-    private bool _dirty;
-    private bool _ready;
-    private string? _pendingOpen;
     private bool _closingConfirmed;
-    private int _words;
+    // The shown document's path, state and editor (_path, _dirty, _ready, Web…) live in its tab: MainWindow.Tabs.cs.
 
     private static string AppDir => AppContext.BaseDirectory;
     private static string Version => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 
-    public MainWindow(string? startPath)
+    /// <summary>startPaths: what the command line named. A folder goes to the Files panel (the first one); each file
+    /// gets a tab, the last one shown.</summary>
+    public MainWindow(IReadOnlyList<string>? startPaths)
     {
         InitializeComponent();
         Strings.Lang = _settings.Lang;
-        string? startFolder = null;
-        if (startPath != null && Directory.Exists(startPath)) { startFolder = startPath; startPath = null; }
-        _pendingOpen = startPath;
+        string? startFolder = startPaths?.FirstOrDefault(Directory.Exists);
+        InitTabs(startPaths?.Where(p => !Directory.Exists(p)).ToList() ?? new List<string>());
         ApplySavedBounds();
         if (Application.Current != null)
         {
@@ -45,32 +42,34 @@ public partial class MainWindow : Window
         if (!_settings.AccentChosen) _settings.Accent = Accents.Default;
         ThemeManager.Apply(this, IsDark, _settings.Accent);
         Icon = Accents.WindowIcon(_settings.Accent) ?? Icon;
-        // page colour from the first frame, so there is no white/black flash while the editor loads
-        Web.DefaultBackgroundColor = IsDark ? System.Drawing.Color.FromArgb(13, 17, 23) : System.Drawing.Color.White;
+        // (each page gets the page colour from its first frame, CreateView: no white/black flash while it loads)
         BuildMenu();
         UpdateTitle();
         SourceInitialized += (_, _) => ThemeManager.Apply(this, IsDark, _settings.Accent);
         Accents.ApplyToSystem(_settings.Accent);   // e.g. after an update reinstalled the default icon
         Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnSystemPreference;
         Closed += (_, _) => Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnSystemPreference;
-        Loaded += async (_, _) => await InitWebAsync();
+        Loaded += async (_, _) => await InitWebAsync(_cur);
         Closing += OnClosing;
         InitFeatures();
         InitUpdate();
         InitFit();
         InitFolder(startFolder);
         PreviewKeyDown += OnKey;
-        Drop += (_, e) =>
+        Drop += async (_, e) =>
         {
-            if (e.Data.GetData(DataFormats.FileDrop) is string[] f && f.Length > 0) { if (Directory.Exists(f[0])) OpenFolder(f[0]); else OpenPath(f[0]); }
+            // several files dropped at once: a tab each
+            if (e.Data.GetData(DataFormats.FileDrop) is string[] f)
+                foreach (var p in f) { if (Directory.Exists(p)) OpenFolder(p); else await OpenPathAsync(p); }
         };
     }
 
     // ------------------------------------------------------------------ WebView
     // Spell check dictionary of each interface language (Windows spell checker tags).
-    private static string SpellLang(string lang) => lang == "es" ? "es-419" : "en-US";
-    private string? _webSpell;                         // dictionary the running browser was started with
-    private (string Text, bool Dirty)? _restore;       // document carried over a browser restart
+    // The browser of each interface language: its own menus (the page's right-click menu) and spell check dictionary.
+    // Windows has no Japanese spell checker, so the Japanese browser checks the English words of a text.
+    private static string SpellLang(string lang) => lang switch { "es" => "es-419", "ja" => "ja", _ => "en-US" };
+    private static string Dictionary(string browserLang) => browserLang == "ja" ? "en-US" : browserLang;
 
     // The browser keeps its spell check languages in its own profile and only reads them at
     // start-up, so each dictionary gets its own profile folder, seeded before the browser starts.
@@ -84,31 +83,34 @@ public partial class MainWindow : Window
             var prefs = (File.Exists(prefsFile) ? System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(prefsFile)) as System.Text.Json.Nodes.JsonObject : null)
                         ?? new System.Text.Json.Nodes.JsonObject();
             prefs["spellcheck"] ??= new System.Text.Json.Nodes.JsonObject();
-            prefs["spellcheck"]!["dictionaries"] = new System.Text.Json.Nodes.JsonArray(spell);
+            prefs["spellcheck"]!["dictionaries"] = new System.Text.Json.Nodes.JsonArray(Dictionary(spell));
             prefs["intl"] ??= new System.Text.Json.Nodes.JsonObject();
-            prefs["intl"]!["selected_languages"] = spell;
+            prefs["intl"]!["selected_languages"] = spell == Dictionary(spell) ? spell : spell + "," + Dictionary(spell);
             File.WriteAllText(prefsFile, prefs.ToJsonString());
         }
         catch { /* the browser then falls back to its own default */ }
         return dir;
     }
 
-    private async Task InitWebAsync()
+    /// <summary>Starts a tab's page. Works on that tab, not on the shown one: the user may switch meanwhile.</summary>
+    private async Task InitWebAsync(DocTab t)
     {
+        var view = t.View!;
         try
         {
-            _webSpell = SpellLang(_settings.Lang);
-            var env = await CoreWebView2Environment.CreateAsync(null, WebProfile(_webSpell),
-                new CoreWebView2EnvironmentOptions { Language = _webSpell });
-            await Web.EnsureCoreWebView2Async(env);
+            t.WebSpell = SpellLang(_settings.Lang);
+            var env = await EnvironmentFor(t.WebSpell);
+            await view.EnsureCoreWebView2Async(env);
         }
         catch (Exception)
         {
+            if (t.View != view) return;   // closed while starting
             MessageBox.Show(this, Strings.Get("NoWebView"), "Vigía", MessageBoxButton.OK, MessageBoxImage.Error);
-            Close();
+            if (_tabs.Count == 1) Close();
             return;
         }
-        var core = Web.CoreWebView2;
+        if (t.View != view) return;
+        var core = view.CoreWebView2;
         core.SetVirtualHostNameToFolderMapping("app.local", Path.Combine(AppDir, "wwwroot"), CoreWebView2HostResourceAccessKind.Allow);
         InitDocFiles(core);
         core.Settings.AreDevToolsEnabled = false;
@@ -121,19 +123,30 @@ public partial class MainWindow : Window
         {
             if (!e.Uri.StartsWith("https://app.local/", StringComparison.OrdinalIgnoreCase)) { e.Cancel = true; OpenLink(e.Uri); }
         };
-        Web.ZoomFactor = _settings.Zoom;
+        view.ZoomFactor = _settings.Zoom;
         core.Navigate("https://app.local/index.html");
     }
 
     private async Task<string> Js(string script) => await Web.CoreWebView2.ExecuteScriptAsync(script);
     private static string Q(string s) => JsonSerializer.Serialize(s);
 
+    /// <summary>A message from a page. Only the shown tab's page acts at once; a hidden one's message waits until
+    /// its tab is shown (MainWindow.Tabs.cs ActivateAsync).</summary>
     private async void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
+        var tab = TabOf(sender);
+        if (tab == null) return;
         string json = e.WebMessageAsJson;
+        if (tab != _cur) { if (json != "\"drop\"") tab.Held.Add(json); return; }
+        await HandleWebMessage(json, e);
+    }
+
+    private async Task HandleWebMessage(string json, CoreWebView2WebMessageReceivedEventArgs? e)
+    {
         if (json == "\"drop\"")
         {
-            if (e.AdditionalObjects?.FirstOrDefault() is CoreWebView2File f) OpenPath(f.Path);
+            // files dropped on the page: a tab each
+            foreach (var f in e?.AdditionalObjects?.OfType<CoreWebView2File>() ?? Enumerable.Empty<CoreWebView2File>()) await OpenPathAsync(f.Path);
             return;
         }
         using var doc = JsonDocument.Parse(json);
@@ -142,16 +155,21 @@ public partial class MainWindow : Window
         switch (root.GetProperty("type").GetString())
         {
             case "ready":
-                await Js($"mdApp.init({Q(_settings.Lang)},{Q(IsDark ? "dark" : "light")},{Q(_settings.Mode)},{(_settings.Spell ? "true" : "false")},{(_settings.ReadOnly ? "true" : "false")},true)");
-                await Js($"mdApp.setWidth({_settings.TextWidth})");
-                _ready = true;
-                _lastEditSeq = 0;   // a new page counts its edits from zero
-                if (_restore is { } r) { _restore = null; await RestoreDocAsync(r.Text, r.Dirty); }
-                else if (_pendingOpen != null) { var p = _pendingOpen; _pendingOpen = null; await LoadFileAsync(p); }
-                else if (!_settings.SampleShown && SamplePath != null) { _settings.SampleShown = true; _settings.Save(); await LoadSampleAsync(); }
-                else UpdateStatus();
-                if (SelfTestLog != null) { _ = Dispatcher.BeginInvoke(async () => await RunSelfTestAsync()); break; }
-                await OfferRecoveryAsync();
+                using (DocBusy())
+                {
+                    await Js($"mdApp.init({Q(_settings.Lang)},{Q(IsDark ? "dark" : "light")},{Q(_settings.Mode)},{(_settings.Spell ? "true" : "false")},{(_settings.ReadOnly ? "true" : "false")},true)");
+                    await Js($"mdApp.setWidth({_settings.TextWidth})");
+                    PageInitialised(_cur);
+                    _ready = true;
+                    _lastEditSeq = 0;   // a new page counts its edits from zero
+                    if (_restore is { } r) { _restore = null; await RestoreDocAsync(r.Text, r.Dirty); }
+                    else if (_pendingOpen != null) { var p = _pendingOpen; _pendingOpen = null; await LoadFileAsync(p); }
+                    else if (!_settings.SampleShown && SamplePath != null) { _settings.SampleShown = true; _settings.Save(); await LoadSampleAsync(); }
+                    else UpdateStatus();
+                }
+                RefreshTabs();
+                if (SelfTestLog != null) { if (!_selfTestStarted) { _selfTestStarted = true; _ = Dispatcher.BeginInvoke(async () => await RunSelfTestAsync()); } break; }
+                if (!_recoveryOffered) { _recoveryOffered = true; await OfferRecoveryAsync(); }
                 break;
             case "dirty":
                 if (root.TryGetProperty("words", out var w)) _words = w.GetInt32();
@@ -240,13 +258,7 @@ public partial class MainWindow : Window
         new[] { ".md", ".markdown", ".mdown", ".mkd", ".txt" }.Contains(Path.GetExtension(p).ToLowerInvariant());
 
     // ------------------------------------------------------------------ Files
-    private async void OpenPath(string path)
-    {
-        if (Directory.Exists(path)) { OpenFolder(path); return; }
-        if (!_ready) { _pendingOpen = path; return; }
-        if (!await ConfirmDiscardAsync()) return;
-        await LoadFileAsync(path);
-    }
+    // (opening a file picks or makes its tab: OpenPath / OpenPathAsync in MainWindow.Tabs.cs)
 
     /// <summary>The file as text; remembers its BOM and line endings so a save writes them back.
     /// Shared read access: another program may still have it open for writing.</summary>
@@ -265,8 +277,10 @@ public partial class MainWindow : Window
         return text;
     }
 
+    /// <summary>Loads a file into the shown tab, in place of what it had.</summary>
     private async Task LoadFileAsync(string path)
     {
+        using var busy = DocBusy();
         try
         {
             path = Path.GetFullPath(path);
@@ -308,6 +322,7 @@ public partial class MainWindow : Window
             if (dlg.ShowDialog(this) != true) return false;
             target = dlg.FileName;
         }
+        using var busy = DocBusy();
         _saving = true;
         try
         {
@@ -392,23 +407,29 @@ public partial class MainWindow : Window
     {
         SaveBounds();
         if (_ready) _settings.Zoom = Web.ZoomFactor;
+        SaveTabSession();
         _settings.Save();
     }
 
+    /// <summary>Closing the window closes every tab: each one with unsaved changes asks first (Cancel keeps the
+    /// window open). With File → Reopen tabs at start on, their files open again at the next start.</summary>
     private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         SaveBounds();
         if (_ready) _settings.Zoom = Web.ZoomFactor;
+        if (!_closingConfirmed) SaveTabSession();   // the tabs as they are, before any of them is asked about
         _settings.Save();
-        if (_closingConfirmed || !_dirty) { Hide(); ClearRecovery(); StopFeatures(); return; }
+        if (_closingConfirmed || !_tabs.Any(t => t.Dirty)) { Hide(); ClearAllRecovery(); StopFeatures(); return; }
         e.Cancel = true;
-        if (await ConfirmDiscardAsync()) { _closingConfirmed = true; ClearRecovery(); StopFeatures(); Close(); }
+        _windowClosing = true;
+        bool go = await ConfirmDiscardAllAsync();
+        _windowClosing = false;
+        if (go) { _closingConfirmed = true; ClearAllRecovery(); StopFeatures(); Close(); }
     }
 
     // ------------------------------------------------------------------ Sample document
     // Installed hidden in {app}\samples (one per language). It opens as an untitled copy, so the
-    // installed file is never overwritten; Save asks for a new name.
-    private bool _isSample;
+    // installed file is never overwritten; Save asks for a new name. (_isSample: the shown tab holds it.)
 
     private static string? SamplePath
     {
@@ -423,9 +444,11 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Help → Sample document: in its own tab (or the shown one, when nobody typed in it).</summary>
     private async Task OpenSampleAsync()
     {
-        if (!_ready || !await ConfirmDiscardAsync()) return;
+        if (_tabs.FirstOrDefault(t => t.IsSample && t.Path == null) is { } open) { await ActivateAsync(open); return; }
+        if (!await TabForContentAsync()) return;
         await LoadSampleAsync();
     }
 
@@ -433,6 +456,7 @@ public partial class MainWindow : Window
     {
         var p = SamplePath;
         if (p == null) return;
+        using var busy = DocBusy();
         try
         {
             var text = File.ReadAllText(p, Encoding.UTF8);
@@ -448,13 +472,24 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>File → New tab (Ctrl+N): an untitled document in a new tab next to the shown one. When the shown
+    /// tab is already an empty untitled document, that one is used.</summary>
     private async Task NewDocAsync()
     {
-        if (!await ConfirmDiscardAsync()) return;
-        await Js("mdApp.load('', null)");
+        if (IsPristine(_cur) && !_cur.IsSample) { if (_ready) await Js("mdApp.focus()"); return; }
+        var t = AddTab(null, _tabs.IndexOf(_cur) + 1);
+        await ActivateAsync(t);
+        await WaitLoadedAsync(t);
+    }
+
+    /// <summary>The shown tab becomes an empty untitled document (closing the last tab).</summary>
+    private async Task ClearDocumentAsync()
+    {
+        if (!_ready) { _pendingOpen = null; _restore = null; }
+        else await Js("mdApp.load('', null)");
         _path = null; _dirty = false; _words = 0; _crlf = false; _bom = false; _isSample = false;
         Watch(null); ClearRecovery();
-        UpdateTitle(); UpdateStatus();
+        RefreshTabs(); BuildMenu(); UpdateTitle(); UpdateStatus();
     }
 
     private async Task ExportHtmlAsync()
@@ -515,7 +550,8 @@ public partial class MainWindow : Window
     // ------------------------------------------------------------------ Commands
     private async Task RunCommand(string cmd)
     {
-        if (!_ready && cmd != "exit") return;
+        // tab commands work while the shown tab's page is still starting
+        if (!_ready && cmd is not ("exit" or "close" or "nexttab" or "prevtab" or "reopentab" or "new")) return;
         switch (cmd)
         {
             case "new": await NewDocAsync(); break;
@@ -525,8 +561,9 @@ public partial class MainWindow : Window
                 {
                     Filter = Strings.Get("MdFilter"),
                     InitialDirectory = _path != null ? Path.GetDirectoryName(_path) : null,
+                    Multiselect = true,   // several files: a tab each
                 };
-                if (dlg.ShowDialog(this) == true) OpenPath(dlg.FileName);
+                if (dlg.ShowDialog(this) == true) foreach (var f in dlg.FileNames) await OpenPathAsync(f);
                 break;
             case "save": await SaveAsync(false); break;
             case "saveas": await SaveAsync(true); break;
@@ -546,7 +583,11 @@ public partial class MainWindow : Window
             case "folder":
                 if (_path != null) Process.Start("explorer.exe", $"/select,\"{_path}\"");
                 break;
-            case "close": case "exit": Close(); break;
+            case "close": await CloseTabAsync(_cur); break;
+            case "nexttab": await NextTabAsync(1); break;
+            case "prevtab": await NextTabAsync(-1); break;
+            case "reopentab": await ReopenClosedTabAsync(); break;
+            case "exit": Close(); break;
             case "mode1": await SetMode("visual"); break;
             case "mode2": await SetMode("source"); break;
             case "mode3": await SetMode("preview"); break;
@@ -556,27 +597,28 @@ public partial class MainWindow : Window
         }
     }
 
+    // Mode, lock, width, spell check, theme and language apply to every tab: the shown page gets them now
+    // (SyncPageAsync), each hidden one when it is shown again.
     private async Task SetMode(string mode)
     {
         _settings.Mode = mode; _settings.Save();
         SyncSegments();
-        if (_ready) await Js($"mdApp.setMode({Q(mode)})");
+        await SyncPageAsync();
         BuildMenu(); UpdateStatus();
     }
 
     // ------------------------------------------------------------------ theme (View → Theme…)
     private bool IsDark => _settings.Theme == "dark" || (_settings.Theme == "auto" && ThemeManager.SystemDark());
     internal string AccentKey => _settings.Accent;
-    private bool _appliedDark;
 
     private async Task ApplyThemeAsync()
     {
         bool dark = IsDark;
         ThemeManager.Apply(this, dark, _settings.Accent);
         Icon = Accents.WindowIcon(_settings.Accent) ?? Icon;
-        Web.DefaultBackgroundColor = dark ? System.Drawing.Color.FromArgb(13, 17, 23) : System.Drawing.Color.White;
-        if (_ready && dark != _appliedDark) await Js($"mdApp.setTheme({Q(dark ? "dark" : "light")})");
-        _appliedDark = dark;
+        foreach (var t in _tabs)
+            if (t.View != null) t.View.DefaultBackgroundColor = dark ? System.Drawing.Color.FromArgb(13, 17, 23) : System.Drawing.Color.White;
+        await SyncPageAsync();
         if (_folderInit) RefreshTree();   // folder colours follow the theme
     }
 
@@ -597,7 +639,7 @@ public partial class MainWindow : Window
     {
         _settings.ReadOnly = on; _settings.Save();
         SyncSegments();
-        if (_ready) await Js($"mdApp.setLocked({(on ? "true" : "false")})");
+        await SyncPageAsync();
         BuildMenu(); UpdateStatus();
         if (_ready && !on) await Js("mdApp.focus()");
     }
@@ -614,6 +656,9 @@ public partial class MainWindow : Window
         if (Web.IsKeyboardFocusWithin) return;
         string? cmd = e.Key switch
         {
+            Key.Tab => Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? "prevtab" : "nexttab",
+            Key.PageDown => "nexttab", Key.PageUp => "prevtab",
+            Key.T when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "reopentab",
             Key.N => "new", Key.O => "open", Key.P => "print", Key.W => "close",
             Key.S => Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? "saveas" : "save",
             Key.D1 => "mode1", Key.D2 => "mode2", Key.D3 => "mode3",
@@ -669,6 +714,8 @@ public partial class MainWindow : Window
         var file = new MenuItem { Header = Strings.Get("File") };
         file.Items.Add(Item("New", ctrl + "N", () => RunCommand("new")));
         file.Items.Add(Item("NewWindow", null, () => RunCommand("newwindow")));
+        file.Items.Add(Item("TabClose", ctrl + "W", () => RunCommand("close")));
+        file.Items.Add(Item("TabReopen", ctrl + "Shift+T", () => RunCommand("reopentab"), enabled: _closedTabs.Count > 0));
         file.Items.Add(Item("Open", ctrl + "O", () => RunCommand("open")));
         file.Items.Add(Item("OpenDir", null, () => RunCommand("opendir")));
         var recent = new MenuItem { Header = Strings.Get("Recent"), Icon = Glyph("Recent") };
@@ -721,6 +768,9 @@ public partial class MainWindow : Window
         var startup = new MenuItem { Header = Strings.Get("StartupMenu") };
         foreach (var mi in StartupItems()) startup.Items.Add(mi);
         file.Items.Add(startup);
+        var restore = Item("RestoreTabs", null, () => { ToggleRestoreTabs(); return Task.CompletedTask; }, _settings.RestoreTabs);
+        restore.ToolTip = Strings.Get("RestoreTabsTip");
+        file.Items.Add(restore);
         file.Items.Add(new Separator());
         file.Items.Add(Item("Save", ctrl + "S", () => RunCommand("save")));
         file.Items.Add(Item("SaveAs", ctrl + "Shift+S", () => RunCommand("saveas")));
@@ -790,20 +840,20 @@ public partial class MainWindow : Window
             widthMenu.Items.Add(Item(key, null, async () =>
             {
                 _settings.TextWidth = px; _settings.Save();
-                if (_ready) await Js($"mdApp.setWidth({px})");
+                await SyncPageAsync();
                 BuildMenu();
             }, _settings.TextWidth == px));
         view.Items.Add(widthMenu);
         view.Items.Add(Item("Spell", null, async () =>
         {
             _settings.Spell = !_settings.Spell; _settings.Save();
-            if (_ready) await Js($"mdApp.setSpell({(_settings.Spell ? "true" : "false")})");
+            await SyncPageAsync();
             BuildMenu();
         }, _settings.Spell));
         MainMenu.Items.Add(view);
 
         var lang = new MenuItem { Header = Strings.Get("Language") };
-        foreach (var (code, name) in new[] { ("en", "English"), ("es", "Español") })
+        foreach (var (code, name) in Strings.Languages)
         {
             var mi = new MenuItem { Header = name, IsCheckable = true, IsChecked = _settings.Lang == code };
             mi.Click += async (_, _) => await SetLanguage(code);
@@ -818,9 +868,8 @@ public partial class MainWindow : Window
             check: !_settings.SampleHidden, enabled: SamplePath != null));
         help.Items.Add(Item("Guide", null, () =>
         {
-            OpenLink(Strings.Lang == "es"
-                ? "https://docs.github.com/es/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax"
-                : "https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax");
+            // GitHub's own guide in the interface language (it has English, Spanish and Japanese pages)
+            OpenLink($"https://docs.github.com/{Strings.Lang}/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax");
             return Task.CompletedTask;
         }));
         help.Items.Add(Item("CheckUpdates", null, () => CheckUpdatesAsync(true)));
@@ -1025,41 +1074,45 @@ public partial class MainWindow : Window
 
     private void OpenManual()
     {
-        var pdf = Path.Combine(AppDir, "docs", Strings.Lang == "es" ? "Vigia_Manual_ES.pdf" : "Vigia_Manual_EN.pdf");
+        var pdf = Path.Combine(AppDir, "docs", $"Vigia_Manual_{Strings.Lang.ToUpperInvariant()}.pdf");
+        if (!File.Exists(pdf)) pdf = Path.Combine(AppDir, "docs", "Vigia_Manual_EN.pdf");
         if (File.Exists(pdf)) Process.Start(new ProcessStartInfo(pdf) { UseShellExecute = true });
     }
 
     private async Task SetLanguage(string code)
     {
         _settings.Lang = code; Strings.Lang = code; _settings.Save();
-        BuildMenu(); UpdateTitle(); UpdateStatus(); LocalizeFeatures();
-        // a new spell check language needs a new browser; the document is carried over
-        if (_ready && SpellLang(code) != _webSpell) { await RestartWebAsync(); return; }
-        if (_ready) await Js($"mdApp.setLang({Q(code)})");
+        BuildMenu(); UpdateTitle(); UpdateStatus(); LocalizeFeatures(); RefreshTabs();
+        // a new spell check language needs a new browser (the document is carried over): SyncPageAsync
+        bool restart = _ready && SpellLang(code) != _cur.WebSpell;
+        await SyncPageAsync();
+        if (restart) return;
         // the sample follows the interface language (unless it was edited: those changes are kept)
         if (_ready && _isSample && _path == null && !_dirty) await LoadSampleAsync();
     }
 
+    /// <summary>A new browser for the shown tab (a new spell check language): its text and state are carried over.</summary>
     private async Task RestartWebAsync()
     {
-        var text = JsonSerializer.Deserialize<string>(await Js("mdApp.getMarkdownPreserving()")) ?? "";
-        _restore = (text, _dirty);
-        _settings.Zoom = Web.ZoomFactor;
-        _ready = false;
-        var host = (Panel)Web.Parent;
-        int at = host.Children.IndexOf(Web);
-        var old = Web;
-        host.Children.Remove(old);
+        var t = _cur;
+        string text;
+        using (DocBusy()) text = JsonSerializer.Deserialize<string>(await Js("mdApp.getMarkdownPreserving()")) ?? "";
+        if (t != _cur || t.View == null) return;
+        t.Restore = (text, t.Dirty);
+        _settings.Zoom = t.View.ZoomFactor;
+        t.Ready = false;
+        var old = t.View;
+        if (old.CoreWebView2 != null) old.CoreWebView2.WebMessageReceived -= OnWebMessage;
+        DocGrid.Children.Remove(old);
         old.Dispose();
-        Web = new Microsoft.Web.WebView2.Wpf.WebView2 { DefaultBackgroundColor = old.DefaultBackgroundColor };
-        Grid.SetRow(Web, 1);
-        host.Children.Insert(at, Web);
-        Web.ZoomFactorChanged += (_, _) => SyncZoom();
-        await InitWebAsync();
+        t.View = null;
+        CreateView(t);
+        await InitWebAsync(t);
     }
 
     private async Task RestoreDocAsync(string text, bool dirty)
     {
+        using var busy = DocBusy();
         if (_isSample && _path == null && !dirty) { await LoadSampleAsync(); return; }
         await Js($"mdApp.load({Q(text)},{DocBaseJs(_path)})");
         _dirty = dirty;
@@ -1072,7 +1125,8 @@ public partial class MainWindow : Window
     {
         var name = _path != null ? Path.GetFileName(_path) : Strings.Get(_isSample ? "SampleTitle" : "Untitled");
         Title = $"{(_dirty ? "● " : "")}{name} — Vigía" + (Settings.Profile != null ? $"  [{Settings.Profile}]" : "");
-        RevealCurrent();   // the Files panel follows the open file
+        RefreshTabHeader(_cur);   // its tab: name and the dot of unsaved changes
+        RevealCurrent();          // the Files panel follows the open file
     }
 
     private void UpdateStatus()

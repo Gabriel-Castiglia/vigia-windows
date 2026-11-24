@@ -1,5 +1,41 @@
 # Changelog
 
+## 3.2.0 — 2026-11-24
+
+- **Japanese** (日本語): the whole interface — menus, toolbar, tooltips, dialogs, panes, the editor's own menus and
+  the theme colours — plus a Japanese user manual (`docs/Vigia_Manual_JA.pdf`, *Help → User manual*), a Japanese
+  sample document, the installer in Japanese and a Japanese section in the README. *Language → 日本語*; on a Windows
+  in Japanese it is the language from the first start. Access keys follow the Japanese convention, `ファイル(F)`.
+  *Help → Markdown guide* opens GitHub's Japanese page. Windows has no Japanese spell checker: with the interface in
+  Japanese, the English words of a text are checked. The status bar counts the words of a Japanese text with the
+  browser's word breaker (a text without spaces counted as one word).
+- The Files panel's title shows whole or not at all: next to the buttons, a narrow panel showed only "FO…".
+- The sample document, in every language, has a section on tabs.
+- **Tabs**: several documents in one window. Each tab has its own editor, so it keeps its undo history, cursor and
+  scroll position while another one is shown; a dot on the tab marks unsaved changes. Opening a file shows the tab
+  that already has it, or opens it in a new tab next to the shown one (in the shown tab itself when it is an empty
+  untitled document or the sample as installed). Files dropped on the window, picked together in *File → Open…* or
+  passed on the command line open a tab each, and so do the files of a second Vigía started meanwhile.
+  - `Ctrl+N` (*File → New tab*) opens an untitled tab; `Ctrl+W` (*File → Close tab*, the × of a tab or a middle
+    click) closes one, asking about its unsaved changes; the last tab closed becomes an empty untitled document.
+    `Ctrl+Tab` / `Ctrl+Shift+Tab` and `Ctrl+PageDown` / `Ctrl+PageUp` switch tabs; `Ctrl+Shift+T` (*File → Reopen
+    closed tab*) brings back the last one closed. A tab dragged along the strip moves among the others; the ⌄ button
+    at the end lists them all, and a right click offers *Close the other tabs*, *Close the tabs to the right*,
+    *Close all tabs*, *Copy path* and *Show in folder*.
+  - **`Ctrl+W` now closes the tab, not the window** (`Alt+F4` or *File → Exit* close the window).
+  - Closing the window closes every tab, each one with unsaved changes asking first (autosave writes the ones it
+    may). With **File → Reopen tabs at start** on (off by default), the files of the tabs open again at the next
+    start, with the same tab shown; the list is kept as the tabs change, so it survives a crash too. Untitled
+    documents are not kept, and a file that is gone by then is left out.
+  - A tab whose file changes on disk while another tab is shown is reloaded (or asks, with unsaved changes) when it
+    is shown again. Moving or renaming files in the Files panel takes their tabs along. Each tab has its own crash
+    recovery draft. An update reopens every tab.
+  - Mode, read only, text width, spell check, theme, language and zoom are the same for every tab; a hidden tab
+    takes a change when it is shown again.
+- **Expand all**: the button in the Files panel's title collapses every folder while any is open, and expands them
+  all, every level, when everything is closed; its icon and tooltip say which. Also in the panel's ⋯ menu. Expanding
+  stops after 1,500 folders, so a tree as big as a whole drive does not freeze the window.
+
 ## 3.1.0 — 2026-11-21
 
 - The default theme colour is sky blue, the lighthouse against the sky (it was dark gold), and so are the program's

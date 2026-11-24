@@ -419,6 +419,21 @@ js = """
     out.find_at_hidden_markdown = JSON.stringify(hid) === JSON.stringify({ visual: [0, 2], preview: [0, 2], markdown: [1, 3] });
     if (!out.find_at_hidden_markdown) out.find_at_seen = JSON.stringify(hid);
 
+    // tabs: the window's shortcuts while the page has the focus, and the headings sent again when the host shows
+    // this page's tab (mdApp.outline)
+    mdApp.setMode('visual');
+    const sent = [], keepPost = window.chrome.webview.postMessage;
+    window.chrome.webview.postMessage = (m) => { sent.push(m); };
+    const key = (k, shift) => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, ctrlKey: true, shiftKey: !!shift, bubbles: true, cancelable: true }));
+    key('Tab'); key('Tab', true); key('PageDown'); key('PageUp'); key('T', true); key('w');
+    const cmds = sent.filter(m => m && m.type === 'cmd').map(m => m.cmd);
+    out.tab_keys = JSON.stringify(cmds) === JSON.stringify(['nexttab', 'prevtab', 'nexttab', 'prevtab', 'reopentab', 'close']);
+    if (!out.tab_keys) out.tab_keys_seen = JSON.stringify(cmds);
+    mdApp.load('# One\\n\\n## Two\\n', null);
+    const mark = sent.length; mdApp.outline();
+    out.tab_outline = sent.slice(mark).some(m => m && m.type === 'outline' && m.items.length === 2);
+    window.chrome.webview.postMessage = keepPost;
+
     mdApp.setMode('visual');
   } catch (e) { out.err = String(e && e.stack || e); }
   document.getElementById('out').textContent = JSON.stringify(out);

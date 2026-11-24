@@ -49,7 +49,13 @@ public partial class MainWindow
         FilesOpenBtn.Click += (_, _) => PickFolder();
         FilesAdd.Click += (_, _) => PickFolder();
         FilesRefresh.Click += (_, _) => RefreshTree();
-        FilesCollapse.Click += (_, _) => CollapseAllTrees();
+        FilesCollapse.Click += (_, _) => ToggleExpandAll();
+        // the panel's title (FOLDERS, FILES) shows whole or not at all: next to the buttons a narrow panel left only "FO…"
+        FilesHeader.SizeChanged += (_, _) => FitFilesTitle();
+        FilesTitle.SizeChanged += (_, _) => FitFilesTitle();
+        // the button follows every folder that opens or closes, by hand or by code (bubbled from the rows)
+        FilesTree.AddHandler(TreeViewItem.ExpandedEvent, new RoutedEventHandler((_, _) => ScheduleExpandButton()));
+        FilesTree.AddHandler(TreeViewItem.CollapsedEvent, new RoutedEventHandler((_, _) => ScheduleExpandButton()));
         InitFileOps();
         FilesOptions.Click += (_, _) => { var m = OptionsMenu(); m.PlacementTarget = FilesOptions; m.Placement = PlacementMode.Bottom; m.IsOpen = true; };
         InitLayout();
@@ -94,10 +100,11 @@ public partial class MainWindow
         FilesAdd.ToolTip = Strings.Get("FolderAdd");
         FilesOptions.ToolTip = Strings.Get("FolderOptions");
         FilesRefresh.ToolTip = Strings.Get("Refresh");
-        FilesCollapse.ToolTip = Strings.Get("CollapseAll");
+        UpdateExpandButton();
         UpdateFileOpButtons();
         if (_folderInit) LocalizeSearch();
         FilesTitle.Text = Strings.Get(_roots.Count > 0 ? "RecentFolders" : "FilesTitle");
+        FitFilesTitle();
         if (_roots.Count > 0) RefreshTree();   // context menus are built with the interface language
     }
 
@@ -173,7 +180,7 @@ public partial class MainWindow
         _roots.Clear(); _missing.Clear();
         SaveRoots();
         RefreshTree();   // the favourites stay
-        FilesTitle.Text = Strings.Get("FilesTitle");
+        FilesTitle.Text = Strings.Get("FilesTitle"); FitFilesTitle();
         ApplyFilesVisibility();
         BuildMenu();
     }
@@ -201,7 +208,7 @@ public partial class MainWindow
         FilesEmptyPanel.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
         FilesTree.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         FilesHeaderButtons.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
-        FilesTitle.Text = Strings.Get(open ? "RecentFolders" : "FilesTitle");
+        FilesTitle.Text = Strings.Get(open ? "RecentFolders" : "FilesTitle"); FitFilesTitle();
     }
 
     // ------------------------------------------------------------------ order and colours
@@ -305,8 +312,27 @@ public partial class MainWindow
             _expandNext = null;
             _revealedPath = null;
             RevealCurrent();
+            UpdateExpandButton();
         }
         catch { }
+    }
+
+    private void FitFilesTitle()
+    {
+        var full = new TextBlock { Text = FilesTitle.Text, FontSize = FilesTitle.FontSize, FontWeight = FilesTitle.FontWeight, FontFamily = FilesTitle.FontFamily };
+        full.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double room = FilesHeader.ActualWidth - FilesHeaderButtons.ActualWidth - 4;
+        FilesTitle.Visibility = full.DesiredSize.Width <= room ? Visibility.Visible : Visibility.Hidden;
+    }
+
+    private bool _expandButtonQueued;
+
+    /// <summary>Updates the expand / collapse button once the current batch of opening and closing is over.</summary>
+    private void ScheduleExpandButton()
+    {
+        if (_expandButtonQueued) return;
+        _expandButtonQueued = true;
+        Dispatcher.BeginInvoke(() => { _expandButtonQueued = false; UpdateExpandButton(); }, DispatcherPriority.Background);
     }
 
     private static void Restore(ItemCollection items, HashSet<string> expanded)
@@ -404,12 +430,51 @@ public partial class MainWindow
         }
     }
 
-    private void CollapseAllTrees() { foreach (var i in FilesTree.Items.OfType<TreeViewItem>()) CollapseAll(i); }
+    private void CollapseAllTrees() { foreach (var i in FilesTree.Items.OfType<TreeViewItem>()) CollapseAll(i); UpdateExpandButton(); }
 
     private static void CollapseAll(TreeViewItem item)
     {
         foreach (var c in item.Items.OfType<TreeViewItem>()) CollapseAll(c);
         item.IsExpanded = false;
+    }
+
+    /// <summary>Most folders "Expand all" opens: subfolders are read from disk as they open, so a tree as big as a
+    /// whole drive stops there instead of freezing the window.</summary>
+    internal const int ExpandCap = 1500;
+
+    /// <summary>Opens every folder of the panel (the Favourites and Recent blocks too), level by level, so the upper
+    /// levels are all open when the cap is reached. Returns the number of folders opened.</summary>
+    internal int ExpandAllTrees()
+    {
+        var queue = new Queue<TreeViewItem>(FilesTree.Items.OfType<TreeViewItem>());
+        int opened = 0;
+        while (queue.Count > 0 && opened < ExpandCap)
+        {
+            var item = queue.Dequeue();
+            if (item.Items.Count == 0) continue;                    // an empty folder, or a file
+            if (item.Tag is string p && _missing.Contains(p)) continue;   // an open folder not reachable now
+            item.IsExpanded = true;                                  // reads the folder the first time (OnNodeExpanded)
+            opened++;
+            foreach (var c in item.Items.OfType<TreeViewItem>()) queue.Enqueue(c);
+        }
+        if (queue.Count > 0) Flash(string.Format(Strings.Get("ExpandCapped"), ExpandCap));
+        UpdateExpandButton();
+        return opened;
+    }
+
+    /// <summary>True when any row of the panel is open (a folder, or the Favourites / Recent block).</summary>
+    private bool AnyExpanded() => FilesTree.Items.OfType<TreeViewItem>().Any(AnyExpanded);
+
+    private static bool AnyExpanded(TreeViewItem i) => i.IsExpanded || i.Items.OfType<TreeViewItem>().Any(AnyExpanded);
+
+    /// <summary>The button of the panel's title: Collapse all while something is open, Expand all when everything is closed.</summary>
+    private void ToggleExpandAll() { if (AnyExpanded()) CollapseAllTrees(); else ExpandAllTrees(); }
+
+    private void UpdateExpandButton()
+    {
+        bool collapse = AnyExpanded();
+        FilesCollapse.Content = collapse ? "" : "";
+        FilesCollapse.ToolTip = Strings.Get(collapse ? "CollapseAll" : "ExpandAll");
     }
 
     private static T? Ancestor<T>(DependencyObject? d) where T : DependencyObject
@@ -520,11 +585,12 @@ public partial class MainWindow
         color.Items.Add(new Separator());
         string[] en = { "Red", "Orange", "Yellow", "Lime", "Green", "Mint", "Cyan", "Sky", "Blue", "Violet", "Purple", "Pink" };
         string[] es = { "Rojo", "Naranja", "Amarillo", "Lima", "Verde", "Menta", "Cian", "Celeste", "Azul", "Violeta", "Morado", "Rosa" };
+        string[] ja = { "赤", "オレンジ", "黄", "ライム", "緑", "ミント", "シアン", "スカイブルー", "青", "バイオレット", "紫", "ピンク" };
         for (int k = 0; k < 12; k++)
         {
             double hue = k * 30;
             string key = hue.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            var mi = MenuEntry(Strings.Lang == "es" ? es[k] : en[k], () => { _settings.FolderColorMap[dir] = key; _settings.Save(); RefreshTree(); },
+            var mi = MenuEntry(Strings.Lang switch { "es" => es[k], "ja" => ja[k], _ => en[k] }, () => { _settings.FolderColorMap[dir] = key; _settings.Save(); RefreshTree(); },
                                _settings.FolderColorMap.TryGetValue(dir, out var cur) && cur == key);
             mi.Icon = new Border { Width = 14, Height = 14, CornerRadius = new CornerRadius(4), Background = new SolidColorBrush(FromHsl(hue, 0.6, ChromeIsDark() ? 0.45 : 0.75)) };
             color.Items.Add(mi);
@@ -567,6 +633,7 @@ public partial class MainWindow
         m.Items.Add(MenuEntry(Strings.Get("RecentShow"), ToggleRecentPanel, _settings.RecentPanel));
         m.Items.Add(new Separator());
         m.Items.Add(MenuEntry(Strings.Get("FolderAdd"), PickFolder));
+        m.Items.Add(MenuEntry(Strings.Get("ExpandAll"), () => ExpandAllTrees()));
         m.Items.Add(MenuEntry(Strings.Get("CollapseAll"), CollapseAllTrees));
         m.Items.Add(MenuEntry(Strings.Get("FolderCloseAll"), CloseAllFolders));
         return m;

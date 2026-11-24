@@ -1,4 +1,5 @@
-"""Builds docs/Vigia_Manual_EN.html and _ES.html; build.ps1 prints them to PDF with Edge.
+"""Builds docs/Vigia_Manual_EN.html, _ES.html and _JA.html (the Japanese text is in manual_ja.py); build.ps1 prints
+them to PDF with a Chromium browser.
 Copyright (C) 2026 Gabriel Castiglia. Licensed under the GNU GPL, version 2 only.
 Date: November 10, 2026
 SPDX-License-Identifier: GPL-2.0-only
@@ -17,7 +18,7 @@ icon = "data:image/png;base64," + base64.b64encode((root / "assets" / "vigia.png
 CSS = """
 @page { size: A4; margin: 18mm 17mm 20mm; }
 * { box-sizing: border-box; }
-body { font-family: "Segoe UI", system-ui, sans-serif; color: #1f2328; font-size: 10.5pt; line-height: 1.55; margin: 0; }
+body { font-family: "Segoe UI", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui, sans-serif; color: #1f2328; font-size: 10.5pt; line-height: 1.55; margin: 0; }
 .cover { height: 257mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
   background: radial-gradient(ellipse at 50% 95%, #7a3412 0%, #2a1416 45%, #15172a 100%); color: #fff; border-radius: 10px; page-break-after: always; }
 .cover img { width: 190px; height: 190px; filter: drop-shadow(0 12px 30px rgba(255,120,30,.45)); }
@@ -55,7 +56,7 @@ without memorising syntax.</p>
 <figure><img src="{img('visual_light_en.png')}"><figcaption>Visual editor: format with the toolbar, no tags in sight.</figcaption></figure>
 """),
    ("Installation", """
-<p>Run <code>Vigia-Setup-{v}.exe</code>. The installer is available in English and Spanish and does <b>not</b> need
+<p>Run <code>Vigia-Setup-{v}.exe</code>. The installer is available in English, Spanish and Japanese and does <b>not</b> need
 administrator rights: it installs for the current user in <code>%LOCALAPPDATA%\\Programs\\Vigia</code>.</p>
 <table><tr><th>Option</th><th>What it does</th></tr>
 <tr><td>Desktop shortcut</td><td>Adds a Vigía icon to the desktop.</td></tr>
@@ -70,9 +71,9 @@ and Vigía copies its settings, recent files and recovery drafts on the first st
 """),
    ("The window", """
 <table><tr><th>Part</th><th>Use</th></tr>
-<tr><td>Menu bar</td><td>File, Edit, Format, View, Language and Help. All menus are available in English and Spanish.</td></tr>
+<tr><td>Menu bar</td><td>File, Edit, Format, View, Language and Help. All menus are available in English, Spanish and Japanese.</td></tr>
 <tr><td>Toolbar</td><td>The formatting buttons (see below). Hidden in GitHub preview, which is read-only.</td></tr>
-<tr><td>Document</td><td>The page itself, laid out with the same column width, fonts and spacing as github.com.</td></tr>
+<tr><td>Tabs</td><td>One per open document (see <i>Tabs</i>).</td></tr>
 <tr><td>Status bar</td><td>File path, word count, current mode, and whether there are unsaved changes.</td></tr></table>
 <p>The title bar shows the file name; a <b>●</b> in front of it means there are unsaved changes.</p>
 """),
@@ -89,6 +90,27 @@ and Vigía copies its settings, recent files and recovery drafts on the first st
 (also <i>View → Read only</i> or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>). The text is locked in every view: keys, paste, drag and drop and
 the task boxes do nothing, and the formatting buttons are greyed out. You can still read, select, copy, find and switch views.
 If you type, the status bar reminds you how to unlock it. Choose <b>Edit</b> to write again; Vigía remembers your choice.</p>
+"""),
+   ("Tabs", f"""
+<p>Vigía keeps <b>several documents in one window</b>, one per tab, in the strip above the text. Each tab has its own editor:
+it keeps its undo history, cursor and scroll position while you look at another one. A dot on a tab marks unsaved changes;
+the title bar and the status bar show the document of the tab you are on, and the outline follows it.</p>
+<figure><img src="{img('tabs_en_light.png')}" style="width:520px"><figcaption>Four tabs; the second one has unsaved changes.</figcaption></figure>
+<table><tr><th>Action</th><th>How</th></tr>
+<tr><td>Open a file in a tab</td><td>Any way of opening a file: a click in the Files panel, a favourite, <i>File → Open…</i> (pick several files at once to get a tab each), <i>Open recent</i>, a search result, a <code>.md</code> link, a file dropped on the window or opened from Explorer. A file already open is not opened twice: its tab is shown. A new tab goes next to the one you are on; an empty untitled tab (or the sample, untouched) is used instead of adding another.</td></tr>
+<tr><td>New tab</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd>, <i>File → New tab</i> or the <b>+</b> at the right end of the strip: an untitled document.</td></tr>
+<tr><td>Switch</td><td>Click a tab, or <kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Tab</kbd> (also <kbd>Ctrl</kbd>+<kbd>PageDown</kbd> / <kbd>Ctrl</kbd>+<kbd>PageUp</kbd>). When they no longer fit, the mouse wheel over the strip scrolls it, and the <b>⌄</b> button lists them all.</td></tr>
+<tr><td>Close</td><td><kbd>Ctrl</kbd>+<kbd>W</kbd>, <i>File → Close tab</i>, the <b>×</b> of the tab or a middle click on it. A tab with unsaved changes asks first (with autosave on, a file with a name is just saved). Closing the last tab leaves an empty untitled document. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> (<i>File → Reopen closed tab</i>) brings back the last one closed.</td></tr>
+<tr><td>Move</td><td>Drag a tab along the strip.</td></tr>
+<tr><td>Right-click a tab</td><td><b>Close tab</b>, <b>Close the other tabs</b>, <b>Close the tabs to the right</b>, <b>Close all tabs</b>, <b>Reopen closed tab</b>, <b>Copy path</b>, <b>Show in folder</b> and <b>Reopen tabs at start</b>.</td></tr></table>
+<p><b>Closing the window</b> closes every tab; each one with unsaved changes is shown and asked about in turn, and <i>Cancel</i> keeps the
+window open. To find them again next time, turn on <b>File → Reopen tabs at start</b> (off by default): the next start opens the same files,
+in the same order, with the same tab shown. The list is kept as the tabs change, so it also survives a crash or a power cut. Untitled documents
+are not kept, and a file that no longer exists is left out. Each dedicated instance keeps its own tabs; an extra window
+(<i>File → New window</i>) never writes over the main window's.</p>
+<p>View settings are the same for every tab: mode, read only, text width, spell check, theme, language and zoom. A tab you are not looking at
+takes a change when you show it again. If another program changes the file of a hidden tab, the tab reloads it (or asks, if it has unsaved
+changes) when you show it. Renaming or moving a file from the Files panel takes its tab along.</p>
 """),
    ("Folders: the Files panel", f"""
 <p>Like VS Code or Obsidian, Vigía shows folders as trees on the left: subfolders and Markdown files
@@ -107,7 +129,7 @@ pastel colour and a stripe on its left edge, so you see at a glance where one tr
 <tr><td>Recent files</td><td>Off by default. <i>View → Recent files in the panel</i> (or the panel's ⋯ menu) adds a <b>RECENT</b> block under the favourites with the last eight files opened.</td></tr>
 <tr><td>Right-click a folder's title</td><td><b>Pin to top</b> / <b>Unpin</b>, <b>Close this folder</b>, <b>Colour</b> (twelve pastel colours or <i>Automatic</i>), <b>Move up</b> / <b>Move down</b> (in opening order), show in folder, copy path, refresh.</td></tr>
 <tr><td>Right-click inside a tree</td><td>On a file: open, open in a new window, show in folder, copy path, and <b>Convert to TXT</b>, which writes a .txt next to it as the document reads in the GitHub view (headings, lists, tables and links in plain text) and leaves the Markdown file as it is. On a folder: show in folder, copy path, refresh. On both: <b>Rename</b> (also <kbd>F2</kbd>).</td></tr>
-<tr><td>Panel buttons</td><td>The two arrows undo and redo renames and moves; the padlock locks or unlocks the tree for dragging; <b>+</b> add folder, refresh, collapse all, and <b>⋯</b>: the order, the colours and what opens at start.</td></tr></table>
+<tr><td>Panel buttons</td><td>The two arrows undo and redo renames and moves; the padlock locks or unlocks the tree for dragging; <b>+</b> add folder, refresh, <b>collapse all / expand all</b> (one button: while any folder is open it collapses them all; when everything is closed it expands every folder, every level; its icon and tooltip say which; the <b>⋯</b> menu has both), and <b>⋯</b>: the order, the colours and what opens at start. Expanding stops after 1,500 folders, so a tree as big as a whole drive does not freeze the window.</td></tr></table>
 <h3>Renaming and moving files</h3>
 <p>Changes made from the tree happen on disk. <kbd>F2</kbd> or right-click → <b>Rename</b> renames the selected file or folder.
 To move files and folders, click the <b>padlock</b> in the panel header to unlock the tree, then drag them onto a folder (or onto a file in
@@ -136,6 +158,7 @@ main window's open folders or size.</p>
 <tr><td>Reopen the folders of the last session</td><td>The panel comes back exactly as you left it (the default).</td></tr>
 <tr><td>Start clean, with no folders</td><td>Every start begins with an empty panel.</td></tr>
 <tr><td>Start clean, only with the pinned folders</td><td>Every start shows just the folders you pinned — for example the one or two projects you always work on.</td></tr></table>
+<p>The documents are a choice of their own: <i>File → Reopen tabs at start</i> opens again the files of the tabs you had (see <i>Tabs</i>).</p>
 <p>The panel follows the disk: files and folders created, renamed or deleted by other programs (for example in Explorer)
 appear or disappear at once. If a whole open folder is deleted, or a network drive goes away, its block stays with the note
 <i>not available</i> and comes back by itself when the folder does; clicking a file that was deleted meanwhile just refreshes the panel.
@@ -162,12 +185,12 @@ Recent folders are listed in <i>File → Open recent</i>.</p>
 """),
    ("Files", """
 <table><tr><th>Action</th><th>How</th></tr>
-<tr><td>Open</td><td><i>File → Open</i> (<kbd>Ctrl</kbd>+<kbd>O</kbd>), double-click a .md file, or drag a file onto the window.</td></tr>
+<tr><td>Open</td><td><i>File → Open</i> (<kbd>Ctrl</kbd>+<kbd>O</kbd>), double-click a .md file, or drag a file onto the window. Each one opens in a tab of its own.</td></tr>
 <tr><td>Recent files</td><td><i>File → Open recent</i> keeps the last 12 files.</td></tr>
 <tr><td>Save / Save as</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>. New files are saved as UTF-8 without BOM, the same as GitHub; existing files keep their encoding and line endings.</td></tr>
-<tr><td>New / New window</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd> starts an empty document; <i>New window</i> opens a second Vigía.</td></tr>
+<tr><td>New tab / New window</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd> opens an empty document in a new tab; <i>New window</i> opens a second Vigía.</td></tr>
 <tr><td>Show in folder</td><td>Opens Explorer with the file selected.</td></tr></table>
-<p><b>Autosave</b> is on by default: a file with a name saves itself a moment after you stop typing, and closing it or opening another file saves without asking. The <i>Autosave</i> switch in the toolbar (also <i>File → Autosave</i>) turns it off; then only Save writes the file, and if you close a document with unsaved changes, Vigía asks whether to save them. Autosave never writes over a change made by another program: Vigía asks first. A new document is saved by itself once it has a name.</p>
+<p><b>Autosave</b> is on by default: a file with a name saves itself a moment after you stop typing, and closing its tab saves without asking. The <i>Autosave</i> switch in the toolbar (also <i>File → Autosave</i>) turns it off; then only Save writes the file, and if you close a document with unsaved changes, Vigía asks whether to save them. Autosave never writes over a change made by another program: Vigía asks first. A new document is saved by itself once it has a name.</p>
 <h3>Images and links</h3>
 <p>Relative paths work as on GitHub: <code>![diagram](img/diagram.png)</code> shows the image stored next to the .md file.
 In GitHub preview, links to web pages open in your browser, links to other <code>.md</code> files open in Vigía, and
@@ -189,10 +212,10 @@ In GitHub preview, links to web pages open in your browser, links to other <code
 <tr><td>Tables</td><td>A long path, address or piece of code in a cell breaks where it has to, so the table fits the column instead of hiding behind a scrollbar; plain words stay whole. A table of eight columns or more takes less padding.</td></tr>
 <tr><td>Properties at the top</td><td>A block between two <code>---</code> lines at the start of a file (front matter, as GitHub, Jekyll or Obsidian use) is shown as properties, not as text: in the Visual view a grey box folded to its first lines, which opens while the cursor is in it; in the GitHub view a table under a <b>Properties</b> line, closed until clicked. The block is saved exactly as it was written.</td></tr>
 <tr><td>[[name]] links</td><td>In the GitHub view, <code>[[name]]</code> (also <code>[[name|text]]</code> and <code>[[name#heading]]</code>) links to the Markdown file of that name in the open folders, as in a wiki; the nearest one wins. A name that matches no file is shown in red. The text of the file does not change.</td></tr>
-<tr><td>Crash recovery</td><td>Unsaved work is backed up every 20 seconds. If Vigía or Windows stops unexpectedly, the next start offers to recover it.</td></tr>
-<tr><td>Spell check</td><td><i>View → Spell check</i> underlines misspelled words, in the interface language (Windows dictionaries).</td></tr>
-<tr><td>One window per file</td><td>Opening a .md while Vigía is running brings the existing window forward instead of starting a second copy. <i>File → New window</i> still opens another one.</td></tr>
-<tr><td>Updates</td><td>Vigía checks once a day for a new version (once for all the dedicated instances); <i>Help → Check for updates</i> does it on demand. When there is one, a single question — <b>Update now</b>, <b>What's new</b> or <b>Later</b> — and the rest happens by itself: the installer is downloaded and checked against the release's checksums (one that does not match is deleted, never run), every Vigía window closes (saving first, or asking if it cannot), the new version installs in silence with the same options, and the windows open again, each with its profile and its file. If a window is not closed (its question answered with <i>Cancel</i>), nothing is installed and the others come back.</td></tr>
+<tr><td>Crash recovery</td><td>Unsaved work is backed up every 20 seconds (each tab on its own). If Vigía or Windows stops unexpectedly, the next start offers to recover it.</td></tr>
+<tr><td>Spell check</td><td><i>View → Spell check</i> underlines misspelled words (Windows dictionaries): in English or Spanish, those of the interface language. Windows has no Japanese spell checker, so with the interface in Japanese the English words of a text are checked.</td></tr>
+<tr><td>One window per file</td><td>Opening a .md while Vigía is running brings the existing window forward, with the file in a tab, instead of starting a second copy. <i>File → New window</i> still opens another one.</td></tr>
+<tr><td>Updates</td><td>Vigía checks once a day for a new version (once for all the dedicated instances); <i>Help → Check for updates</i> does it on demand. When there is one, a single question — <b>Update now</b>, <b>What's new</b> or <b>Later</b> — and the rest happens by itself: the installer is downloaded and checked against the release's checksums (one that does not match is deleted, never run), every Vigía window closes (saving first, or asking if it cannot), the new version installs in silence with the same options, and the windows open again, each with its profile, its files and its tabs. If a window is not closed (its question answered with <i>Cancel</i>), nothing is installed and the others come back.</td></tr>
 <tr><td>About</td><td><i>Help → About Vigía</i> shows the version, author, license and credits. <i>Copy info</i> copies the version details, handy for reporting a problem.</td></tr>
 <tr><td>Sample document</td><td>A sample that shows every feature in the three views. It opens on the first start and from <i>Help → Sample document</i>, and it is pinned at the top of <i>File → Open recent</i>; <i>Hide sample</i>, right below it, removes it from that list, and <i>Help → Show sample in Open recent</i> brings it back. It opens as an untitled copy, so the original is never overwritten, and it changes language together with the menus.</td></tr></table>
 <h3>GitHub extras</h3>
@@ -200,7 +223,7 @@ In GitHub preview, links to web pages open in your browser, links to other <code
 <code>```mermaid</code> diagrams, math (<code>$E=mc^2$</code> and <code>$$ … $$</code>), footnotes (<code>[^1]</code>) and emoji shortcodes (<code>:rocket:</code>).</p>
 """),
    ("Language, theme and zoom", f"""
-<p><b>Language</b> menu: English or Español. It changes the menus, the toolbar tooltips and dialogs immediately.
+<p><b>Language</b> menu: English, Español or 日本語. It changes the menus, the toolbar tooltips and dialogs immediately.
 The first time, Vigía follows the Windows language.</p>
 <p><b>View → Theme…</b> opens the theme window. <b>Appearance</b>: <i>Light</i>, <i>Dark</i> or <i>Automatic</i>, which follows Windows
 (Settings → Personalisation → Colours) and switches by itself when Windows does. <b>Colour</b>: a catalogue of twelve colours for
@@ -215,12 +238,14 @@ maximized state it had when it was closed (centred if that place is no longer on
 """),
    ("Keyboard shortcuts", """
 <table><tr><th>Keys</th><th>Action</th><th>Keys</th><th>Action</th></tr>
-<tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>New</td><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>Bold</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>New tab</td><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>Bold</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Open</td><td><kbd>Ctrl</kbd>+<kbd>I</kbd></td><td>Italic</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Undo / Redo</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>Save as</td><td><kbd>Ctrl</kbd>+<kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd></td><td>Visual / Source / GitHub</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Print / PDF</td><td><kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd></td><td>Zoom</td></tr>
-<tr><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td><td>Close window</td><td><kbd>F1</kbd></td><td>This manual</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td><td>Close tab</td><td><kbd>F1</kbd></td><td>This manual</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Next / previous tab (also <kbd>Ctrl</kbd>+<kbd>PageDown</kbd> / <kbd>PageUp</kbd>)</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd></td><td>Reopen closed tab</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>F4</kbd></td><td>Close window (every tab)</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Search in the folders</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>H</kbd></td><td>Find / Replace</td><td><kbd>F3</kbd> / <kbd>Shift</kbd>+<kbd>F3</kbd></td><td>Next / previous match</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd></td><td>Outline</td><td><kbd>Esc</kbd></td><td>Close find bar</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Files panel</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></td><td>Read only / Edit</td></tr></table>
@@ -253,7 +278,7 @@ sin aprenderte la sintaxis.</p>
 <figure><img src="{img('visual_light_es.png')}"><figcaption>Editor visual: formato con la barra de herramientas, sin etiquetas a la vista.</figcaption></figure>
 """),
    ("Instalación", """
-<p>Ejecutá <code>Vigia-Setup-{v}.exe</code>. El instalador está en inglés y en español y <b>no</b> pide permisos de
+<p>Ejecutá <code>Vigia-Setup-{v}.exe</code>. El instalador está en inglés, español y japonés y <b>no</b> pide permisos de
 administrador: instala para el usuario actual en <code>%LOCALAPPDATA%\\Programs\\Vigia</code>.</p>
 <table><tr><th>Opción</th><th>Qué hace</th></tr>
 <tr><td>Acceso directo en el escritorio</td><td>Pone el ícono de Vigía en el escritorio.</td></tr>
@@ -268,9 +293,9 @@ configuración en <code>%APPDATA%\\Vigia</code> se conserva.</p>
 """),
    ("La ventana", """
 <table><tr><th>Parte</th><th>Para qué sirve</th></tr>
-<tr><td>Menú</td><td>Archivo, Edición, Formato, Ver, Idioma y Ayuda. Todos los menús están en inglés y en español.</td></tr>
+<tr><td>Menú</td><td>Archivo, Edición, Formato, Ver, Idioma y Ayuda. Todos los menús están en inglés, español y japonés.</td></tr>
 <tr><td>Barra de herramientas</td><td>Los botones de formato (ver más abajo). No aparece en la vista GitHub, que es de solo lectura.</td></tr>
-<tr><td>Documento</td><td>La página, con el mismo ancho de columna, letras y espaciado que github.com.</td></tr>
+<tr><td>Pestañas</td><td>Una por documento abierto (ver <i>Pestañas</i>).</td></tr>
 <tr><td>Barra de estado</td><td>Ruta del archivo, cantidad de palabras, modo actual y si hay cambios sin guardar.</td></tr></table>
 <p>La barra de título muestra el nombre del archivo; un <b>●</b> delante indica que hay cambios sin guardar.</p>
 """),
@@ -287,6 +312,27 @@ configuración en <code>%APPDATA%\\Vigia</code> se conserva.</p>
 (también <i>Ver → Solo lectura</i> o <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd>). El texto queda bloqueado en todas las vistas: las teclas, pegar, arrastrar y soltar
 y las casillas de tareas no hacen nada, y los botones de formato quedan en gris. Igual podés leer, seleccionar, copiar, buscar y cambiar de vista.
 Si escribís, la barra de estado te recuerda cómo desbloquearlo. Elegí <b>Editar</b> para volver a escribir; Vigía recuerda tu elección.</p>
+"""),
+   ("Pestañas", f"""
+<p>Vigía tiene <b>varios documentos en una sola ventana</b>, uno por pestaña, en la franja que está arriba del texto. Cada pestaña tiene su propio
+editor: conserva su deshacer, el cursor y la posición mientras mirás otra. Un punto en la pestaña indica cambios sin guardar; la barra de título
+y la de estado muestran el documento de la pestaña en la que estás, y el esquema la sigue.</p>
+<figure><img src="{img('tabs_es_light.png')}" style="width:520px"><figcaption>Cuatro pestañas; la segunda tiene cambios sin guardar.</figcaption></figure>
+<table><tr><th>Acción</th><th>Cómo</th></tr>
+<tr><td>Abrir un archivo en una pestaña</td><td>Cualquier forma de abrir un archivo: un clic en el panel de archivos, un favorito, <i>Archivo → Abrir…</i> (elegí varios archivos juntos y cada uno va a su pestaña), <i>Abrir reciente</i>, un resultado de búsqueda, un enlace a <code>.md</code>, un archivo que soltás sobre la ventana o que abrís desde el Explorador. Un archivo que ya está abierto no se abre dos veces: se muestra su pestaña. La pestaña nueva va al lado de la que estás mirando; si esa es un documento sin título vacío (o el de ejemplo, sin tocar), se usa esa en vez de agregar otra.</td></tr>
+<tr><td>Pestaña nueva</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd>, <i>Archivo → Nueva pestaña</i> o el <b>+</b> del extremo derecho de la franja: un documento sin título.</td></tr>
+<tr><td>Cambiar de pestaña</td><td>Un clic en la pestaña, o <kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>Tab</kbd> (también <kbd>Ctrl</kbd>+<kbd>AvPág</kbd> / <kbd>Ctrl</kbd>+<kbd>RePág</kbd>). Cuando ya no entran, la rueda del mouse sobre la franja la desplaza, y el botón <b>⌄</b> las lista todas.</td></tr>
+<tr><td>Cerrar</td><td><kbd>Ctrl</kbd>+<kbd>W</kbd>, <i>Archivo → Cerrar pestaña</i>, la <b>×</b> de la pestaña o un clic del medio sobre ella. Una pestaña con cambios sin guardar pregunta antes (con el autoguardado activado, un archivo con nombre simplemente se guarda). Al cerrar la última queda un documento sin título vacío. <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>T</kbd> (<i>Archivo → Reabrir la pestaña cerrada</i>) recupera la última que cerraste.</td></tr>
+<tr><td>Mover</td><td>Arrastrá la pestaña a lo largo de la franja.</td></tr>
+<tr><td>Clic derecho en una pestaña</td><td><b>Cerrar pestaña</b>, <b>Cerrar las otras pestañas</b>, <b>Cerrar las pestañas de la derecha</b>, <b>Cerrar todas las pestañas</b>, <b>Reabrir la pestaña cerrada</b>, <b>Copiar ruta</b>, <b>Mostrar en la carpeta</b> y <b>Reabrir las pestañas al iniciar</b>.</td></tr></table>
+<p><b>Cerrar la ventana</b> cierra todas las pestañas; las que tienen cambios sin guardar se muestran y preguntan de a una, y <i>Cancelar</i> deja la
+ventana abierta. Para encontrarlas la próxima vez, activá <b>Archivo → Reabrir las pestañas al iniciar</b> (apagado de entrada): el próximo arranque
+abre los mismos archivos, en el mismo orden y con la misma pestaña a la vista. La lista se guarda a medida que cambian las pestañas, así que también
+sobrevive a un cuelgue o a un corte de luz. Los documentos sin título no se guardan, y un archivo que ya no existe se deja afuera. Cada instancia
+dedicada recuerda sus propias pestañas; una ventana extra (<i>Archivo → Nueva ventana</i>) nunca escribe encima de las de la ventana principal.</p>
+<p>Las opciones de vista son las mismas para todas las pestañas: modo, solo lectura, ancho del texto, ortografía, tema, idioma y zoom. Una pestaña
+que no estás mirando toma el cambio cuando la volvés a mostrar. Si otro programa cambia el archivo de una pestaña oculta, la pestaña lo recarga
+(o pregunta, si tiene cambios sin guardar) cuando la mostrás. Cambiar de nombre o mover un archivo desde el panel de archivos se lleva su pestaña.</p>
 """),
    ("Carpetas: el panel de archivos", f"""
 <p>Como VS Code u Obsidian, Vigía muestra carpetas como árboles a la izquierda: subcarpetas y archivos Markdown
@@ -305,7 +351,7 @@ color pastel y una franja en el borde izquierdo, así ves de un vistazo dónde t
 <tr><td>Archivos recientes</td><td>Apagado de entrada. <i>Ver → Archivos recientes en el panel</i> (o el menú ⋯ del panel) agrega un bloque <b>RECIENTES</b> debajo de los favoritos con los últimos ocho archivos abiertos.</td></tr>
 <tr><td>Clic derecho en el título de una carpeta</td><td><b>Fijar arriba</b> / <b>Desfijar</b>, <b>Cerrar esta carpeta</b>, <b>Color</b> (doce colores pastel o <i>Automático</i>), <b>Subir</b> / <b>Bajar</b> (en orden de apertura), mostrar en la carpeta, copiar ruta, actualizar.</td></tr>
 <tr><td>Clic derecho dentro de un árbol</td><td>Sobre un archivo: abrir, abrir en otra ventana, mostrar en la carpeta, copiar ruta y <b>Convertir a TXT</b>, que escribe un .txt al lado como se lee el documento en la vista GitHub (títulos, listas, tablas y enlaces en texto plano) y deja el archivo Markdown como está. Sobre una carpeta: mostrar en la carpeta, copiar ruta, actualizar. En los dos: <b>Cambiar nombre</b> (también <kbd>F2</kbd>).</td></tr>
-<tr><td>Botones del panel</td><td>Las dos flechas deshacen y rehacen los cambios de nombre y los movimientos; el candado bloquea o desbloquea el árbol para arrastrar; <b>+</b> agregar carpeta, actualizar, contraer todo, y <b>⋯</b>: el orden, los colores y qué se abre al iniciar.</td></tr></table>
+<tr><td>Botones del panel</td><td>Las dos flechas deshacen y rehacen los cambios de nombre y los movimientos; el candado bloquea o desbloquea el árbol para arrastrar; <b>+</b> agregar carpeta, actualizar, <b>contraer todo / expandir todo</b> (un solo botón: mientras haya alguna carpeta abierta las contrae todas; cuando está todo cerrado expande todas las carpetas, todos los niveles; su ícono y su ayuda dicen cuál hace; el menú <b>⋯</b> tiene los dos), y <b>⋯</b>: el orden, los colores y qué se abre al iniciar. Expandir se detiene a las 1.500 carpetas, así un árbol del tamaño de un disco entero no congela la ventana.</td></tr></table>
 <h3>Cambiar de nombre y mover archivos</h3>
 <p>Lo que se hace desde el árbol pasa en el disco. <kbd>F2</kbd> o clic derecho → <b>Cambiar nombre</b> renombra el archivo o la carpeta seleccionada.
 Para mover archivos y carpetas, hacé clic en el <b>candado</b> de la cabecera del panel para desbloquear el árbol y arrastralos sobre una carpeta
@@ -360,12 +406,12 @@ Las carpetas recientes aparecen en <i>Archivo → Abrir reciente</i>.</p>
 """),
    ("Archivos", """
 <table><tr><th>Acción</th><th>Cómo</th></tr>
-<tr><td>Abrir</td><td><i>Archivo → Abrir</i> (<kbd>Ctrl</kbd>+<kbd>O</kbd>), doble clic en un .md, o arrastrar el archivo a la ventana.</td></tr>
+<tr><td>Abrir</td><td><i>Archivo → Abrir</i> (<kbd>Ctrl</kbd>+<kbd>O</kbd>), doble clic en un .md, o arrastrar el archivo a la ventana. Cada uno se abre en su propia pestaña.</td></tr>
 <tr><td>Recientes</td><td><i>Archivo → Abrir reciente</i> guarda los últimos 12.</td></tr>
 <tr><td>Guardar / Guardar como</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>. Los archivos nuevos se guardan en UTF-8 sin BOM, igual que GitHub; los existentes conservan su codificación y finales de línea.</td></tr>
-<tr><td>Nuevo / Nueva ventana</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd> empieza un documento vacío; <i>Nueva ventana</i> abre otro Vigía.</td></tr>
+<tr><td>Nueva pestaña / Nueva ventana</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd> abre un documento vacío en una pestaña nueva; <i>Nueva ventana</i> abre otro Vigía.</td></tr>
 <tr><td>Mostrar en la carpeta</td><td>Abre el Explorador con el archivo seleccionado.</td></tr></table>
-<p>El <b>autoguardado</b> viene encendido: un archivo con nombre se guarda solo un momento después de que dejás de escribir, y al cerrarlo o abrir otro se guarda sin preguntar. El interruptor <i>Autoguardado</i> de la barra (también <i>Archivo → Autoguardado</i>) lo apaga; entonces solo Guardar escribe el archivo, y si cerrás un documento con cambios sin guardar, Vigía pregunta si querés guardarlos. El autoguardado nunca escribe encima de un cambio hecho por otro programa: Vigía pregunta antes. Un documento nuevo se guarda solo cuando ya tiene nombre.</p>
+<p>El <b>autoguardado</b> viene encendido: un archivo con nombre se guarda solo un momento después de que dejás de escribir, y al cerrar su pestaña se guarda sin preguntar. El interruptor <i>Autoguardado</i> de la barra (también <i>Archivo → Autoguardado</i>) lo apaga; entonces solo Guardar escribe el archivo, y si cerrás un documento con cambios sin guardar, Vigía pregunta si querés guardarlos. El autoguardado nunca escribe encima de un cambio hecho por otro programa: Vigía pregunta antes. Un documento nuevo se guarda solo cuando ya tiene nombre.</p>
 <h3>Imágenes y enlaces</h3>
 <p>Las rutas relativas funcionan como en GitHub: <code>![diagrama](img/diagrama.png)</code> muestra la imagen que está junto al .md.
 En la vista GitHub, los enlaces web se abren en el navegador, los enlaces a otros <code>.md</code> se abren en Vigía y los
@@ -387,10 +433,10 @@ En la vista GitHub, los enlaces web se abren en el navegador, los enlaces a otro
 <tr><td>Tablas</td><td>Una ruta, una dirección o un código largo dentro de una celda se corta donde hace falta, así la tabla entra en la columna en vez de quedar detrás de una barra de desplazamiento; las palabras comunes quedan enteras. Una tabla de ocho columnas o más lleva menos relleno.</td></tr>
 <tr><td>Propiedades al principio</td><td>Un bloque entre dos líneas <code>---</code> al comienzo del archivo (front matter, como lo usan GitHub, Jekyll u Obsidian) se muestra como propiedades y no como texto: en la vista Visual, un recuadro gris plegado a sus primeras líneas, que se abre mientras el cursor está adentro; en la vista GitHub, una tabla bajo una línea <b>Propiedades</b>, cerrada hasta que se hace clic. El bloque se guarda exactamente como estaba escrito.</td></tr>
 <tr><td>Enlaces [[nombre]]</td><td>En la vista GitHub, <code>[[nombre]]</code> (también <code>[[nombre|texto]]</code> y <code>[[nombre#título]]</code>) lleva al archivo Markdown de ese nombre en las carpetas abiertas, como en una wiki; gana el más cercano. Un nombre sin archivo sale en rojo. El texto del archivo no cambia.</td></tr>
-<tr><td>Recuperación</td><td>Lo no guardado se respalda cada 20 segundos. Si Vigía o Windows se cierran de golpe, al volver a abrir ofrece recuperarlo.</td></tr>
-<tr><td>Ortografía</td><td><i>Ver → Corrector ortográfico</i> subraya las palabras mal escritas, en el idioma de la interfaz (diccionarios de Windows).</td></tr>
-<tr><td>Una sola ventana</td><td>Abrir un .md con Vigía ya abierto trae al frente la ventana existente en vez de abrir otra copia. <i>Archivo → Nueva ventana</i> sigue abriendo otra.</td></tr>
-<tr><td>Actualizaciones</td><td>Vigía busca una versión nueva una vez por día (una sola vez para todas las instancias dedicadas); <i>Ayuda → Buscar actualizaciones</i> lo hace en el momento. Si hay una, una sola pregunta — <b>Actualizar ahora</b>, <b>Ver novedades</b> o <b>Más tarde</b> — y el resto se hace solo: se descarga el instalador y se lo compara con las sumas de verificación de la versión publicada (si no coincide se borra y nunca se ejecuta), se cierran todas las ventanas de Vigía (cada una guarda antes, o pregunta si no puede), la versión nueva se instala en silencio con las mismas opciones y las ventanas se vuelven a abrir, cada una con su perfil y su archivo. Si una ventana no se cierra (porque en su pregunta se eligió <i>Cancelar</i>), no se instala nada y las demás vuelven.</td></tr>
+<tr><td>Recuperación</td><td>Lo no guardado se respalda cada 20 segundos (cada pestaña por su lado). Si Vigía o Windows se cierran de golpe, al volver a abrir ofrece recuperarlo.</td></tr>
+<tr><td>Ortografía</td><td><i>Ver → Corrector ortográfico</i> subraya las palabras mal escritas (diccionarios de Windows): en inglés o en español, los del idioma de la interfaz. Windows no tiene corrector de japonés, así que con la interfaz en japonés se revisan las palabras en inglés del texto.</td></tr>
+<tr><td>Una sola ventana</td><td>Abrir un .md con Vigía ya abierto trae al frente la ventana existente, con el archivo en una pestaña, en vez de abrir otra copia. <i>Archivo → Nueva ventana</i> sigue abriendo otra.</td></tr>
+<tr><td>Actualizaciones</td><td>Vigía busca una versión nueva una vez por día (una sola vez para todas las instancias dedicadas); <i>Ayuda → Buscar actualizaciones</i> lo hace en el momento. Si hay una, una sola pregunta — <b>Actualizar ahora</b>, <b>Ver novedades</b> o <b>Más tarde</b> — y el resto se hace solo: se descarga el instalador y se lo compara con las sumas de verificación de la versión publicada (si no coincide se borra y nunca se ejecuta), se cierran todas las ventanas de Vigía (cada una guarda antes, o pregunta si no puede), la versión nueva se instala en silencio con las mismas opciones y las ventanas se vuelven a abrir, cada una con su perfil, sus archivos y sus pestañas. Si una ventana no se cierra (porque en su pregunta se eligió <i>Cancelar</i>), no se instala nada y las demás vuelven.</td></tr>
 <tr><td>Acerca de</td><td><i>Ayuda → Acerca de Vigía</i> muestra la versión, el autor, la licencia y los créditos. <i>Copiar info</i> copia los datos de versión, útil para reportar un problema.</td></tr>
 <tr><td>Documento de ejemplo</td><td>Un ejemplo que muestra todas las funciones en las tres vistas. Se abre la primera vez que arrancás el programa y desde <i>Ayuda → Documento de ejemplo</i>, y está fijo arriba de todo en <i>Archivo → Abrir reciente</i>; <i>Ocultar ejemplo</i>, justo debajo, lo saca de esa lista, y <i>Ayuda → Mostrar el ejemplo en Abrir reciente</i> lo vuelve a poner. Se abre como copia sin título, así que el original nunca se pisa, y cambia de idioma junto con los menús.</td></tr></table>
 <h3>Extras de GitHub</h3>
@@ -398,7 +444,7 @@ En la vista GitHub, los enlaces web se abren en el navegador, los enlaces a otro
 diagramas <code>```mermaid</code>, fórmulas (<code>$E=mc^2$</code> y <code>$$ … $$</code>), notas al pie (<code>[^1]</code>) y emojis por código (<code>:rocket:</code>).</p>
 """),
    ("Idioma, tema y zoom", f"""
-<p>Menú <b>Idioma</b>: English o Español. Cambia al instante los menús, las ayudas de la barra y los diálogos.
+<p>Menú <b>Idioma</b>: English, Español o 日本語. Cambia al instante los menús, las ayudas de la barra y los diálogos.
 La primera vez, Vigía toma el idioma de Windows.</p>
 <p><b>Ver → Tema…</b> abre la ventana de tema. <b>Apariencia</b>: <i>Claro</i>, <i>Oscuro</i> o <i>Automático</i>, que sigue a Windows
 (Configuración → Personalización → Colores) y cambia solo cuando Windows cambia. <b>Color</b>: un catálogo de doce colores para
@@ -413,12 +459,12 @@ el estado maximizado que tenía al cerrarla (centrada si ese lugar ya no está e
 """),
    ("Atajos de teclado", """
 <table><tr><th>Teclas</th><th>Acción</th><th>Teclas</th><th>Acción</th></tr>
-<tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>Nuevo</td><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>Negrita</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>Nueva pestaña</td><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>Negrita</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Abrir</td><td><kbd>Ctrl</kbd>+<kbd>I</kbd></td><td>Cursiva</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Guardar</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Deshacer / Rehacer</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>Guardar como</td><td><kbd>Ctrl</kbd>+<kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd></td><td>Visual / Código / GitHub</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Imprimir / PDF</td><td><kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd></td><td>Zoom</td></tr>
-<tr><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td><td>Cerrar ventana</td><td><kbd>F1</kbd></td><td>Este manual</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td><td>Cerrar pestaña</td><td><kbd>F1</kbd></td><td>Este manual</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>H</kbd></td><td>Buscar / Reemplazar</td><td><kbd>F3</kbd> / <kbd>Mayús</kbd>+<kbd>F3</kbd></td><td>Coincidencia siguiente / anterior</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>O</kbd></td><td>Esquema</td><td><kbd>Esc</kbd></td><td>Cerrar búsqueda</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>E</kbd></td><td>Panel de archivos</td><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd></td><td>Solo lectura / Editar</td></tr></table>
@@ -439,6 +485,10 @@ pasan a <code>-</code>). El texto y cómo lo muestra GitHub no cambian.</div>
 """),
   ]),
 }
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import manual_ja
+T["ja"] = manual_ja.build(img)
 
 for code, d in T.items():
     toc = "".join(f"<div>{i}. {name}</div>" for i, (name, _) in enumerate(d["sections"], 1))

@@ -67,6 +67,9 @@ public sealed class ChoiceDialog : Window
         Content = card;
     }
 
+    /// <summary>--render-chrome: the dialog built but not shown.</summary>
+    internal static Window ForTest(Window owner, string text, string[] buttons, int cancel) => new ChoiceDialog(owner, text, buttons, cancel);
+
     /// <summary>Shows the question and returns the index of the button chosen (cancel on Escape or close).</summary>
     public static int Ask(Window owner, string text, string[] buttons, int cancel)
     {

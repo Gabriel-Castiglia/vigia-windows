@@ -24,6 +24,7 @@ public static class ThemeManager
         ["Gm.Hover"] = ("#EBEBF0", "#3A3A3D"),
         ["Gm.Pressed"] = ("#E1E1E6", "#454548"),
         ["Gm.Separator"] = ("#E8E8ED", "#38383A"),
+        ["Gm.Page"] = ("#FFFFFF", "#0D1117"),   // the editor page's own background: the shown tab joins it
     };
 
     /// <summary>Chrome colours plus the theme colour (folder icons, check marks, selected item).</summary>

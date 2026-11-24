@@ -224,16 +224,15 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Opens the file (asking about unsaved changes first, as always) and goes to its n-th match, with the
-    /// find bar showing the words. The line and the file's number of matches let the page pick the right one in a
-    /// view that hides some of the Markdown (app.js, findAt).</summary>
+    /// <summary>Shows the file (its tab, or a new one) and goes to its n-th match, with the find bar showing the
+    /// words. The line and the file's number of matches let the page pick the right one in a view that hides some
+    /// of the Markdown (app.js, findAt).</summary>
     private async Task OpenAtMatch(string path, string q, bool matchCase, int occurrence, string? line, int total)
     {
         if (!File.Exists(path)) { Flash(Strings.Get("ItemGone")); return; }
         if (!string.Equals(path, _path, StringComparison.OrdinalIgnoreCase))
         {
-            if (!await ConfirmDiscardAsync()) return;
-            await LoadFileAsync(path);
+            if (!await OpenPathAsync(path)) return;
             await Task.Delay(60);
         }
         FindCase.IsChecked = matchCase;

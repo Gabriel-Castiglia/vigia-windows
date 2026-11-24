@@ -70,31 +70,34 @@ public partial class App : Application
         _ = Task.Run(Settings.CleanupTestProfiles);   // leftovers of the self-test and the pictures (Settings.cs)
         var profile = ProfileArg(e.Args, out int skip);
         if (!string.IsNullOrWhiteSpace(profile)) Settings.Profile = profile.Trim();
-        var path = e.Args.Where((a, i) => i != skip && !a.StartsWith('-')).FirstOrDefault();
-        try { if (path != null) path = Path.GetFullPath(path); } catch { path = null; }
+        // every file and folder named on the command line (an update reopens all the tabs this way)
+        var paths = new List<string>();
+        foreach (var a in e.Args.Where((a, i) => i != skip && !a.StartsWith('-')))
+            try { paths.Add(Path.GetFullPath(a)); } catch { /* not a path */ }
         bool newWindow = e.Args.Contains("--new-window");
 
-        // Single instance per profile: hand the file to the running one and leave
+        // Single instance per profile: hand the files to the running one and leave
         _mutex = new Mutex(true, "Local\\" + PipeName, out bool first);
-        if (!first && !newWindow && TrySend(path ?? ""))
+        if (!first && !newWindow && TrySend(paths))
         {
             Shutdown();
             return;
         }
         Settings.IsSecondary = !first;   // an extra window: the session belongs to the first one
-        var main = new MainWindow(path);
+        var main = new MainWindow(paths);
         main.Show();
         if (first) StartServer(main);
     }
 
-    private static bool TrySend(string path)
+    /// <summary>One path per line; no line at all just brings the running window to the front.</summary>
+    private static bool TrySend(List<string> paths)
     {
         try
         {
             using var c = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
             c.Connect(1500);
             using var w = new StreamWriter(c) { AutoFlush = true };
-            w.WriteLine(path);
+            foreach (var p in paths) w.WriteLine(p);
             return true;
         }
         catch { return false; }
@@ -111,8 +114,9 @@ public partial class App : Application
                     using var s = new NamedPipeServerStream(PipeName, PipeDirection.In, 1);
                     s.WaitForConnection();
                     using var r = new StreamReader(s);
-                    var p = r.ReadLine();
-                    Dispatcher.BeginInvoke(() => main.ActivateFromOtherInstance(p));
+                    var paths = new List<string>();
+                    for (string? line; (line = r.ReadLine()) != null && paths.Count < 256;) if (line.Length > 0) paths.Add(line);
+                    Dispatcher.BeginInvoke(() => main.ActivateFromOtherInstance(paths));
                 }
                 catch { Thread.Sleep(500); }
             }
