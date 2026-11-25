@@ -181,6 +181,14 @@ public partial class MainWindow
             Check("updates: newer versions and checksums", IsNewer("v2.1.0", "2.0.9") && !IsNewer("2.0.0", "2.0.0") && !IsNewer("x", "1.0.0")
                   && HashFor(sums, "Vigia-Setup-9.9.9.exe") == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
                   && HashFor(sums, "Vigia_Manual_EN.pdf")?.StartsWith("ffff") == true && HashFor(sums, "other.exe") == null, "");
+            // release.sig: a real signature by the author's key over exactly those bytes; any change is refused
+            var sumsBytes = System.Text.Encoding.UTF8.GetBytes(sums);
+            const string goodSig = "rEEKYRSXLO7VKbID/El7ZkFBh1uKIPNS38KopNSZ6DEm7knfIUjxch9kmv8xfREc6bLKka+bePFZ1BKzO+15ww==";
+            var badSig = goodSig[..10] + (goodSig[10] == 'A' ? 'B' : 'A') + goodSig[11..];
+            var altered = System.Text.Encoding.UTF8.GetBytes(sums.Replace("0123", "0124"));
+            Check("updates: release signature", SignatureValid(sumsBytes, goodSig + "\n", ReleaseKey) && !SignatureValid(altered, goodSig, ReleaseKey)
+                  && !SignatureValid(sumsBytes, badSig, ReleaseKey) && !SignatureValid(sumsBytes, "", ReleaseKey)
+                  && !SignatureValid(sumsBytes, null, ReleaseKey) && !SignatureValid(sumsBytes, "not base64!", ReleaseKey), "");
 
             // file operations of the tree: rename, drop into a folder, undo and redo; the open document follows
             var ops = Path.Combine(tmp, "ops"); var sub = Path.Combine(ops, "sub");
@@ -324,6 +332,66 @@ public partial class MainWindow
             _settings.RestoreTabs = false; SaveTabSession();
             Check("tabs: with it off, nothing is kept", _settings.OpenTabs.Count == 0, string.Join(" | ", _settings.OpenTabs));
             Check("tabs: an update reopens every tab, the shown one last", TabFiles().LastOrDefault() == tb && TabFiles().Contains(ta), string.Join(" | ", TabFiles()));
+
+            // the spare page: started ahead, taken by the next tab that needs a page, set up when taken
+            var tc = Path.Combine(tabsDir, "c.md"); File.WriteAllText(tc, "# Tab C\n\n```haskell\nmain = putStrLn \"hi\"\n```\n");
+            bool spareUp = await WaitFor(() => Task.FromResult(_spare is { Started: true } s && s.Held.Count > 0), 20);
+            int taken = SpareTaken;
+            ok = await OpenPathAsync(tc);
+            Check("tabs: a new tab takes the page started ahead", spareUp && ok && SpareTaken == taken + 1 && _path == tc
+                  && await JsInt("mdApp.getMarkdown().includes('Tab C') ? 1 : 0") == 1, $"spare {spareUp} taken {SpareTaken - taken} path {_path}");
+            // a code block in a language the bundle lacks: highlighted once the full set is loaded
+            await SetMode("preview");
+            ok = await WaitFor(async () => await JsInt("document.querySelectorAll('#preview code.language-haskell span[class^=hljs-]').length") > 0
+                                         && await JsInt("document.querySelectorAll('#preview code[data-hl-lang]').length") == 0, 6);
+            Check("preview: a rare language loads the full highlighter", ok, await Js("document.querySelector('#preview code') ? document.querySelector('#preview code').outerHTML.slice(0, 160) : 'none'"));
+            await SetMode("visual");
+            // the preview tab: a click in the panel opens a passing tab the next click reuses; typing keeps it
+            var pv1 = Path.Combine(tabsDir, "p1.md"); var pv2 = Path.Combine(tabsDir, "p2.md");
+            File.WriteAllText(pv1, "# P1\n"); File.WriteAllText(pv2, "# P2\n");
+            bool wasPreview = _settings.PreviewTab; _settings.PreviewTab = true;
+            int before = _tabs.Count;
+            ok = await OpenPathAsync(pv1, preview: true);
+            var p1Tab = FindTab(pv1);
+            bool p1 = ok && p1Tab is { Preview: true } && p1Tab.Label!.FontStyle == FontStyles.Italic && _tabs.Count == before + 1;
+            ok = await OpenPathAsync(pv2, preview: true);
+            var p2Tab = FindTab(pv2);
+            Check("tabs: a preview tab is reused by the next click in the panel", p1 && ok && FindTab(pv1) == null && p2Tab is { Preview: true } && _tabs.Count == before + 1,
+                  $"p1 {p1} tabs {_tabs.Count} was {before}");
+            AutoSaveBtn.IsChecked = false;
+            await Js("mdApp.focus(); mdApp.insertText('typed ')");
+            await WaitFor(() => Task.FromResult(_dirty), 3);
+            Check("tabs: typing keeps a preview tab", p2Tab is { Preview: false } && p2Tab.Label!.FontStyle == FontStyles.Normal, $"preview {p2Tab?.Preview}");
+            AutoSaveBtn.IsChecked = true;
+            await WaitFor(() => Task.FromResult(!_dirty), 4);
+            ok = await OpenPathAsync(pv1, preview: true);
+            Check("tabs: a kept tab is not reused", ok && FindTab(pv2) != null && FindTab(pv1) is { Preview: true } && _tabs.Count == before + 2, $"tabs {_tabs.Count}");
+            _settings.PreviewTab = wasPreview;
+
+            // spell check: English, Spanish and Japanese at once; a word is right when any of them knows it
+            var langs3 = new List<string> { "en", "es", "ja" };
+            var bad = SpellChecker.Misspelled(new[] { "hello", "mundo", "canción", "xqzwrt", "日本語" }, langs3, new HashSet<string>());
+            Check("spell: several languages at once, Japanese never marked", bad.Count == 1 && bad[0] == "xqzwrt", string.Join(",", bad));
+            Check("spell: suggestions", SpellChecker.Suggest("helo", langs3).Contains("hello"), string.Join(",", SpellChecker.Suggest("helo", langs3)));
+            var spf = Path.Combine(tabsDir, "spell.md"); File.WriteAllText(spf, "# Spell\n\nhello mundo xqzwrt vbnmqp\n");
+            bool wasSpell = _settings.Spell; var wasLangs = _settings.SpellLangs.ToList();
+            _settings.SpellLangs = langs3.ToList();
+            await SetSpellAsync(true);
+            ok = await OpenPathAsync(spf);
+            string Marked() => "[...new Set(Array.from(document.querySelectorAll('.gm-misspelled')).map(e => e.dataset.word))].sort().join(',')"  /* the Visual and Markdown editors both mark */;
+            ok = ok && await WaitFor(async () => await Js(Marked()) == "\"vbnmqp,xqzwrt\"", 8);
+            Check("spell: the page marks the unknown words only", ok, await Js(Marked()));
+            await SpellAcceptAsync("xqzwrt", permanent: false);
+            ok = await WaitFor(async () => await Js(Marked()) == "\"vbnmqp\"", 4);
+            Check("spell: Ignore unmarks the word", ok && SpellChecker.IsIgnored("xqzwrt"), await Js(Marked()));
+            await SpellAcceptAsync("vbnmqp", permanent: true);
+            ok = await WaitFor(async () => await Js(Marked()) == "\"\"", 4);
+            Check("spell: Add to dictionary unmarks it and keeps it in the settings", ok && _settings.SpellWords.Contains("vbnmqp"), await Js(Marked()));
+            await SetSpellAsync(false);
+            Check("spell: turned off, nothing is marked", await WaitFor(async () => await JsInt("document.querySelectorAll('.gm-misspelled').length") == 0, 3), "");
+            _settings.SpellWords.Remove("vbnmqp"); SpellChecker.ForgetSession();
+            _settings.SpellLangs = wasLangs; await SetSpellAsync(wasSpell);
+            foreach (var x in new[] { FindTab(pv1), FindTab(pv2), FindTab(tc), FindTab(spf) }) if (x != null) await CloseTabAsync(x);
 
             // a save that is still writing when another tab is asked for finishes on its own tab: the switch waits for
             // it, and neither file takes the other's path or text (3.2.0 could write the second document over the first)

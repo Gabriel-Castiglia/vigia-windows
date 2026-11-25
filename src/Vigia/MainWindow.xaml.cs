@@ -52,6 +52,7 @@ public partial class MainWindow : Window
         Loaded += async (_, _) => await InitWebAsync(_cur);
         Closing += OnClosing;
         InitFeatures();
+        if (_settings.Spell) SpellChecker.Warm(_settings.SpellLangs);
         InitUpdate();
         InitFit();
         InitFolder(startFolder);
@@ -65,27 +66,28 @@ public partial class MainWindow : Window
     }
 
     // ------------------------------------------------------------------ WebView
-    // Spell check dictionary of each interface language (Windows spell checker tags).
-    // The browser of each interface language: its own menus (the page's right-click menu) and spell check dictionary.
-    // Windows has no Japanese spell checker, so the Japanese browser checks the English words of a text.
-    private static string SpellLang(string lang) => lang switch { "es" => "es-419", "ja" => "ja", _ => "en-US" };
-    private static string Dictionary(string browserLang) => browserLang == "ja" ? "en-US" : browserLang;
+    // The browser of each interface language: its own menus (the page's right-click menu) speak that language. A
+    // browser's language is fixed when it starts, and browsers with different languages cannot share a profile
+    // folder, so each language has its own (the folder names are the ones used since 3.0, so profiles are kept).
+    private static string BrowserLang(string lang) => lang switch { "es" => "es-419", "ja" => "ja", _ => "en-US" };
 
-    // The browser keeps its spell check languages in its own profile and only reads them at
-    // start-up, so each dictionary gets its own profile folder, seeded before the browser starts.
-    private static string WebProfile(string spell)
+    // Spell check is Vigía's own (SpellChecker.cs), so the browser's checker is turned off in its profile before it
+    // starts: it would otherwise load (and download) dictionaries nobody uses.
+    private static string WebProfile(string lang)
     {
-        var dir = Path.Combine(Settings.Dir, "WebView2", spell);
+        var dir = Path.Combine(Settings.Dir, "WebView2", lang);
         try
         {
             var prefsFile = Path.Combine(dir, "EBWebView", "Default", "Preferences");
             Directory.CreateDirectory(Path.GetDirectoryName(prefsFile)!);
             var prefs = (File.Exists(prefsFile) ? System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(prefsFile)) as System.Text.Json.Nodes.JsonObject : null)
                         ?? new System.Text.Json.Nodes.JsonObject();
+            prefs["browser"] ??= new System.Text.Json.Nodes.JsonObject();
+            prefs["browser"]!["enable_spellchecking"] = false;
             prefs["spellcheck"] ??= new System.Text.Json.Nodes.JsonObject();
-            prefs["spellcheck"]!["dictionaries"] = new System.Text.Json.Nodes.JsonArray(Dictionary(spell));
+            prefs["spellcheck"]!["dictionaries"] = new System.Text.Json.Nodes.JsonArray();
             prefs["intl"] ??= new System.Text.Json.Nodes.JsonObject();
-            prefs["intl"]!["selected_languages"] = spell == Dictionary(spell) ? spell : spell + "," + Dictionary(spell);
+            prefs["intl"]!["selected_languages"] = lang;
             File.WriteAllText(prefsFile, prefs.ToJsonString());
         }
         catch { /* the browser then falls back to its own default */ }
@@ -98,12 +100,13 @@ public partial class MainWindow : Window
         var view = t.View!;
         try
         {
-            t.WebSpell = SpellLang(_settings.Lang);
-            var env = await EnvironmentFor(t.WebSpell);
+            t.WebLang = BrowserLang(_settings.Lang);
+            var env = await EnvironmentFor(t.WebLang);
             await view.EnsureCoreWebView2Async(env);
         }
         catch (Exception)
         {
+            if (t == _spare) { DropSpare(); return; }   // only a page ahead: the next tab starts its own
             if (t.View != view) return;   // closed while starting
             MessageBox.Show(this, Strings.Get("NoWebView"), "Vigía", MessageBoxButton.OK, MessageBoxImage.Error);
             if (_tabs.Count == 1) Close();
@@ -125,6 +128,7 @@ public partial class MainWindow : Window
         };
         view.ZoomFactor = _settings.Zoom;
         core.Navigate("https://app.local/index.html");
+        t.Started = true;
     }
 
     private async Task<string> Js(string script) => await Web.CoreWebView2.ExecuteScriptAsync(script);
@@ -143,6 +147,7 @@ public partial class MainWindow : Window
             var tab = TabOf(sender);
             if (tab == null) return;
             string json = e.WebMessageAsJson;
+            if (HandleSpellMessage(tab, json)) return;
             if (tab != _cur) { if (json != "\"drop\"") tab.Held.Add(json); return; }
             await HandleWebMessage(json, e);
         }
@@ -176,6 +181,7 @@ public partial class MainWindow : Window
                     else UpdateStatus();
                 }
                 RefreshTabs();
+                PrepareSpare();   // the page the next tab will take (MainWindow.Tabs.cs)
                 if (SelfTestLog != null) { if (!_selfTestStarted) { _selfTestStarted = true; _ = Dispatcher.BeginInvoke(async () => await RunSelfTestAsync()); } break; }
                 if (!_recoveryOffered) { _recoveryOffered = true; await OfferRecoveryAsync(); }
                 break;
@@ -183,6 +189,7 @@ public partial class MainWindow : Window
                 if (root.TryGetProperty("words", out var w)) _words = w.GetInt32();
                 if (root.TryGetProperty("seq", out var sq)) _lastEditSeq = Math.Max(_lastEditSeq, sq.GetInt64());
                 if (!_dirty) { _dirty = true; UpdateTitle(); }
+                if (_cur.Preview) KeepTab(_cur);   // typed in: no longer a passing tab
                 UpdateStatus();
                 ScheduleAutoSave();
                 break;
@@ -794,6 +801,9 @@ public partial class MainWindow : Window
         var restore = Item("RestoreTabs", null, () => { ToggleRestoreTabs(); return Task.CompletedTask; }, _settings.RestoreTabs);
         restore.ToolTip = Strings.Get("RestoreTabsTip");
         file.Items.Add(restore);
+        var preview = Item("PreviewTab", null, () => { TogglePreviewTab(); return Task.CompletedTask; }, _settings.PreviewTab);
+        preview.ToolTip = Strings.Get("PreviewTabTip");
+        file.Items.Add(preview);
         file.Items.Add(new Separator());
         file.Items.Add(Item("Save", ctrl + "S", () => RunCommand("save")));
         file.Items.Add(Item("SaveAs", ctrl + "Shift+S", () => RunCommand("saveas")));
@@ -867,12 +877,8 @@ public partial class MainWindow : Window
                 BuildMenu();
             }, _settings.TextWidth == px));
         view.Items.Add(widthMenu);
-        view.Items.Add(Item("Spell", null, async () =>
-        {
-            _settings.Spell = !_settings.Spell; _settings.Save();
-            await SyncPageAsync();
-            BuildMenu();
-        }, _settings.Spell));
+        view.Items.Add(Item("Spell", null, () => SetSpellAsync(!_settings.Spell), _settings.Spell));
+        view.Items.Add(Item("SpellLangs", null, () => { ShowSpellDialog(); return Task.CompletedTask; }));
         MainMenu.Items.Add(view);
 
         var lang = new MenuItem { Header = Strings.Get("Language") };
@@ -1106,15 +1112,16 @@ public partial class MainWindow : Window
     {
         _settings.Lang = code; Strings.Lang = code; _settings.Save();
         BuildMenu(); UpdateTitle(); UpdateStatus(); LocalizeFeatures(); RefreshTabs();
-        // a new spell check language needs a new browser (the document is carried over): SyncPageAsync
-        bool restart = _ready && SpellLang(code) != _cur.WebSpell;
+        // a new language needs a new browser for its menus (the document is carried over): SyncPageAsync
+        bool restart = _ready && BrowserLang(code) != _cur.WebLang;
+        if (_spare != null && _spare.WebLang != BrowserLang(code)) { DropSpare(); PrepareSpare(); }
         await SyncPageAsync();
         if (restart) return;
         // the sample follows the interface language (unless it was edited: those changes are kept)
         if (_ready && _isSample && _path == null && !_dirty) await LoadSampleAsync();
     }
 
-    /// <summary>A new browser for the shown tab (a new spell check language): its text and state are carried over.</summary>
+    /// <summary>A new browser for the shown tab (a new interface language): its text and state are carried over.</summary>
     private async Task RestartWebAsync()
     {
         var t = _cur;

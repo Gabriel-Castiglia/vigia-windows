@@ -72,10 +72,18 @@ public sealed class Settings
     public double? Top { get; set; }
     public bool Outline { get; set; } = true;
     public bool Spell { get; set; } = true;
+    /// <summary>Spell check languages, all checked at once (a word is right when any of them knows it): "en", "es",
+    /// "ja" (Japanese text is never marked) and any dictionary added by the user (SpellChecker.cs).</summary>
+    public List<string> SpellLangs { get; set; } = new() { "en", "es", "ja" };
+    /// <summary>Words added to the dictionary with the right-click menu (this profile only).</summary>
+    public List<string> SpellWords { get; set; } = new();
     public bool AutoSave { get; set; } = true;   // saves a moment after the typing stops (MainWindow.AutoSave)
     /// <summary>File → Reopen tabs at start: closing the window keeps the files of its tabs and the next start opens
     /// them again (off by default: closing the window closes every tab). MainWindow.Tabs.cs.</summary>
     public bool RestoreTabs { get; set; }
+    /// <summary>File → Preview tab: a click on a file of the Files panel shows it in one passing tab (its name in
+    /// italics) that the next click reuses, until it is edited or kept (double click). On by default (3.3.0).</summary>
+    public bool PreviewTab { get; set; } = true;
     /// <summary>The files of the tabs when the window last closed, in tab order (only kept with RestoreTabs on).</summary>
     public List<string> OpenTabs { get; set; } = new();
     /// <summary>The tab that was shown, as an index into OpenTabs.</summary>

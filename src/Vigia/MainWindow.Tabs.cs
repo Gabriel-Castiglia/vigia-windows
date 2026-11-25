@@ -36,7 +36,9 @@ internal sealed class DocTab
     public int Saving;                    // > 0 while its text is being written: a tab switch waits for it
     public bool ChangePending, ChangeAgain;   // a change on disk being handled (MainWindow.Features.cs OnExternalChange)
     public string RecoveryId = Guid.NewGuid().ToString("N");
-    public string? WebSpell;              // spell check dictionary its browser was started with
+    public string? WebLang;               // the language its browser was started with (BrowserLang)
+    public bool Started;                  // its page has been sent to index.html (InitWebAsync done)
+    public bool Preview;                  // a passing tab: the next file clicked in the panel takes its place
     // what its page was last told, so showing the tab again only sends what changed meanwhile
     public string? PageLang, PageTheme, PageMode;
     public bool? PageLocked, PageSpell;
@@ -132,16 +134,63 @@ public partial class MainWindow
         t.View = view;
     }
 
-    /// <summary>The page's browser for a spell check language. Every tab with that language shares it.</summary>
-    private async Task<CoreWebView2Environment> EnvironmentFor(string spell)
+    /// <summary>The pages' browser for a language (BrowserLang). Every tab with that language shares it.</summary>
+    private async Task<CoreWebView2Environment> EnvironmentFor(string lang)
     {
-        if (_envs.TryGetValue(spell, out var env)) return env;
-        env = await CoreWebView2Environment.CreateAsync(null, WebProfile(spell), new CoreWebView2EnvironmentOptions { Language = spell });
-        _envs[spell] = env;
+        if (_envs.TryGetValue(lang, out var env)) return env;
+        env = await CoreWebView2Environment.CreateAsync(null, WebProfile(lang), new CoreWebView2EnvironmentOptions { Language = lang });
+        _envs[lang] = env;
         return env;
     }
 
-    private DocTab? TabOf(object? sender) => sender is CoreWebView2 core ? _tabs.FirstOrDefault(t => t.View?.CoreWebView2 == core) : null;
+    private DocTab? TabOf(object? sender) => sender is CoreWebView2 core
+        ? _tabs.FirstOrDefault(t => t.View?.CoreWebView2 == core) ?? (_spare?.View?.CoreWebView2 == core ? _spare : null)
+        : null;
+
+    // ------------------------------------------------------------------ the spare page
+    /// <summary>A page started ahead, hidden and with no document: the next tab that needs a page takes it, so its
+    /// browser and the 2.5 MB page are already up (starting them took 0.8 to 1.2 s), and another is started when the
+    /// window is idle. Its "ready" waits in Held like a hidden tab's, so the page is set up (language, theme, mode,
+    /// spell check, lock, width) with the settings of the moment it is taken, not of the moment it was started.</summary>
+    private DocTab? _spare;
+    internal int SpareTaken;   // for the self-test
+
+    private void PrepareSpare() => Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
+    {
+        if (_spare != null || _closingConfirmed || !IsLoaded || _envs.Count == 0) return;
+        var s = new DocTab();
+        _spare = s;
+        CreateView(s);
+        s.View!.Visibility = Visibility.Hidden;   // laid out (so its window is made) but never seen
+        _ = InitWebAsync(s);
+    });
+
+    /// <summary>Gives the spare page to a tab that has none. False (and the tab starts its own) when there is no
+    /// spare yet, it is still starting, or it speaks another language than the interface now.</summary>
+    private bool TakeSpare(DocTab t)
+    {
+        var s = _spare;
+        if (s == null || !s.Started || s.View?.CoreWebView2 == null) return false;
+        if (s.WebLang != BrowserLang(_settings.Lang)) { DropSpare(); return false; }
+        _spare = null;
+        t.View = s.View; t.WebLang = s.WebLang; t.Started = true;
+        t.Held.AddRange(s.Held);
+        t.View.DefaultBackgroundColor = IsDark ? System.Drawing.Color.FromArgb(13, 17, 23) : System.Drawing.Color.White;
+        if (Math.Abs(t.View.ZoomFactor - _settings.Zoom) > 0.001) t.View.ZoomFactor = _settings.Zoom;
+        SpareTaken++;
+        return true;
+    }
+
+    private void DropSpare()
+    {
+        var s = _spare;
+        _spare = null;
+        if (s?.View == null) return;
+        if (s.View.CoreWebView2 != null) s.View.CoreWebView2.WebMessageReceived -= OnWebMessage;
+        DocGrid.Children.Remove(s.View);
+        s.View.Dispose();
+        s.View = null;
+    }
 
     private DocTab? FindTab(string path) => _tabs.FirstOrDefault(t => PathCmp.Equals(t.Path ?? t.PendingOpen ?? "", path));
 
@@ -170,9 +219,11 @@ public partial class MainWindow
         if (t == _cur || !_tabs.Contains(t)) return;
         bool fresh = t.View == null;
         _cur = t;
-        if (fresh) CreateView(t);
+        bool took = fresh && TakeSpare(t);
+        if (fresh && !took) CreateView(t);
         foreach (var x in _tabs) if (x.View != null) x.View.Visibility = x == t ? Visibility.Visible : Visibility.Collapsed;
-        if (fresh) _ = InitWebAsync(t);
+        if (fresh && !took) _ = InitWebAsync(t);
+        if (fresh) PrepareSpare();   // the next one
         else if (t.View!.CoreWebView2 != null && Math.Abs(t.View.ZoomFactor - _settings.Zoom) > 0.001) t.View.ZoomFactor = _settings.Zoom;
         OutlineList.Items.Clear(); OutlineEmpty.Visibility = Visibility.Visible;
         // The tab comes first: its page shown and focused, the strip, the title and the status bar. The menu, the
@@ -221,12 +272,12 @@ public partial class MainWindow
     }
 
     /// <summary>Tells the shown page the settings it does not have yet. Language and theme rebuild the editor (its undo
-    /// history starts again), so they are only sent when they changed; a new spell check language needs a new browser.</summary>
+    /// history starts again), so they are only sent when they changed; a new language needs a new browser (its menus).</summary>
     private async Task SyncPageAsync()
     {
         var t = _cur;
         if (!t.Ready) return;
-        if (t.WebSpell != SpellLang(_settings.Lang)) { await RestartWebAsync(); return; }
+        if (t.WebLang != BrowserLang(_settings.Lang)) { await RestartWebAsync(); return; }
         string theme = IsDark ? "dark" : "light";
         if (t.PageTheme != theme) { t.PageTheme = theme; await Js($"mdApp.setTheme({Q(theme)})"); }
         if (t.PageLang != _settings.Lang) { t.PageLang = _settings.Lang; await Js($"mdApp.setLang({Q(_settings.Lang)})"); }
@@ -268,21 +319,50 @@ public partial class MainWindow
     }
 
     // ------------------------------------------------------------------ opening
-    private async void OpenPath(string path) => await OpenPathAsync(path);
+    private async void OpenPath(string path, bool preview = false) => await OpenPathAsync(path, preview);
 
     /// <summary>Opens a file: the tab that already has it is shown; otherwise it goes into the shown tab when nobody
     /// typed in it, or into a new tab next to it. True once the file is shown.</summary>
-    private async Task<bool> OpenPathAsync(string path)
+    /// <summary>Opens a file in its tab (the one it already has, the untitled one nobody typed in, or a new one).
+    /// <paramref name="preview"/> (a click in the Files panel with File → Preview tab on): the file goes in the
+    /// passing tab, taking the place of the one shown there before.</summary>
+    private async Task<bool> OpenPathAsync(string path, bool preview = false)
     {
         if (Directory.Exists(path)) { OpenFolder(path); return false; }
         try { path = Path.GetFullPath(path); } catch { return false; }
+        preview &= _settings.PreviewTab;
         DocTab t;
-        if (FindTab(path) is { } open) t = open;
-        else if (IsPristine(_cur) && !_cur.Ready && _cur.View != null) { t = _cur; t.PendingOpen = path; t.IsSample = false; RefreshTabs(); }
-        else if (IsPristine(_cur) && _cur.Ready) { await LoadFileAsync(path); return PathCmp.Equals(_path ?? "", path); }
-        else t = AddTab(path, _tabs.IndexOf(_cur) + 1);
+        DocTab? passing = null;
+        if (FindTab(path) is { } open) { t = open; if (!preview && t.Preview) KeepTab(t); }
+        else if (IsPristine(_cur) && !_cur.Ready && _cur.View != null) { t = _cur; t.PendingOpen = path; t.IsSample = false; t.Preview = preview; RefreshTabs(); }
+        else if (IsPristine(_cur) && _cur.Ready) { _cur.Preview = preview; await LoadFileAsync(path); RefreshTabs(); return PathCmp.Equals(_path ?? "", path); }
+        else
+        {
+            passing = preview ? _tabs.FirstOrDefault(x => x.Preview && !x.Dirty && x.Saving == 0) : null;
+            t = AddTab(path, passing != null ? _tabs.IndexOf(passing) + 1 : _tabs.IndexOf(_cur) + 1);
+            t.Preview = preview;
+        }
         await ActivateAsync(t);
+        // the passing tab shown before goes (it was not edited: nothing to ask); its page is freed for the next one
+        if (passing != null && passing != _cur && _tabs.Contains(passing) && passing.Preview && !passing.Dirty) DropTab(passing);
         return await WaitLoadedAsync(t) && PathCmp.Equals(t.Path ?? "", path);
+    }
+
+    /// <summary>A passing tab becomes an ordinary one (typed in, double-clicked, saved under a name, or opened again
+    /// not from a click in the panel).</summary>
+    private void KeepTab(DocTab t)
+    {
+        if (!t.Preview) return;
+        t.Preview = false;
+        RefreshTabHeader(t);
+    }
+
+    private void TogglePreviewTab()
+    {
+        _settings.PreviewTab = !_settings.PreviewTab;
+        if (!_settings.PreviewTab) foreach (var t in _tabs) KeepTab(t);
+        _settings.Save();
+        BuildMenu();
     }
 
     // ------------------------------------------------------------------ closing
@@ -439,6 +519,7 @@ public partial class MainWindow
         {
             if (e.ChangedButton == MouseButton.Middle) { e.Handled = true; await CloseTabAsync(t); }
         };
+        header.PreviewMouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2) KeepTab(t); };   // a double click keeps a passing tab
         header.MouseLeftButtonDown += (_, e) => { _tabDrag = t; _tabDragStart = e.GetPosition(TabPanel); _tabDragged = false; header.CaptureMouse(); e.Handled = true; };
         header.MouseMove += (_, e) => DragTab(e);
         header.MouseLeftButtonUp += async (_, e) =>
@@ -485,6 +566,7 @@ public partial class MainWindow
         if (t.Label == null || t.Header == null || t.Dot == null || t.CloseBtn == null) return;
         t.Label.Text = NameOf(t);
         t.Label.FontWeight = t == _cur ? FontWeights.SemiBold : FontWeights.Normal;
+        t.Label.FontStyle = t.Preview ? FontStyles.Italic : FontStyles.Normal;
         t.Dot.Visibility = t.Dirty ? Visibility.Visible : Visibility.Collapsed;
         t.Header.ToolTip = (t.Path ?? t.PendingOpen ?? NameOf(t)) + (t.Dirty ? "\n" + Strings.Get("Modified") : "");
         t.CloseBtn.ToolTip = Strings.Plain("TabClose") + "   Ctrl+W";

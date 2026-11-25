@@ -36,7 +36,7 @@ follows tools that save by writing a new file and renaming it over the old one.
 - **Themes**: light, dark or automatic (follows Windows), and a colour catalogue that changes the icon everywhere in Windows and the highlights of the app (*View → Theme…*); sky blue by default
 - **Dedicated instances**: open a file or folder in its own Vigía, separate from the main window (`--profile "Name"`, or right-click in the Files panel → desktop shortcut)
 - **Zoom bar** in the status bar (also `Ctrl` + mouse wheel); on a narrow window the buttons that do not fit go into a ⋯ menu
-- Find & replace, spell check; a sidebar with the files above and the outline below, as on the Mac (drag its edge and the line between them)
+- Find & replace; spell check in English, Spanish and Japanese at once (mixed-language text), with suggestions, *Ignore* and *Add to dictionary*; a sidebar with the files above and the outline below, as on the Mac (drag its edge and the line between them)
 - **Layouts**: the files and the outline go on either side of the text, one above the other or side by side; pick one from the drawings behind the layout button of the toolbar (or *View → Layout*), or drag a pane by its title to an edge of the window. *View → Text width* widens the column up to the whole window
 - **Favourites**: a star on each file or folder row puts it in one list for all the open folders, at the top of the Files panel (drag to reorder); an optional RECENT block below it
 - **Search in the folders** (`Ctrl+Shift+F`): every Markdown file of the open folders, results by file and line, a click opens the file at the match; a pane you place like the others
@@ -93,7 +93,7 @@ que guardan escribiendo un archivo nuevo y renombrándolo encima del viejo.
 - **Temas**: claro, oscuro o automático (sigue a Windows), y un catálogo de colores que cambia el ícono en todo Windows y el resaltado de la app (*Ver → Tema…*)
 - **Instancias dedicadas**: abrir un archivo o una carpeta en su propio Vigía, separado de la ventana principal (`--profile "Nombre"`, o clic derecho en el panel de archivos → acceso directo en el escritorio)
 - **Barra de zoom** en la barra de estado (también `Ctrl` + rueda del mouse); con la ventana angosta, los botones que no entran van a un menú ⋯
-- Buscar y reemplazar, revisión ortográfica; una barra lateral con los archivos arriba y el esquema abajo, como en la Mac (se arrastran su borde y la línea entre los dos)
+- Buscar y reemplazar; corrector ortográfico en inglés, español y japonés a la vez (textos con idiomas mezclados), con sugerencias, *Omitir* y *Agregar al diccionario*; una barra lateral con los archivos arriba y el esquema abajo, como en la Mac (se arrastran su borde y la línea entre los dos)
 - **Disposición**: los archivos y el esquema van a cualquiera de los dos lados del texto, uno arriba del otro o lado a lado; se elige con los dibujos del botón de disposición de la barra (o *Ver → Disposición*), o arrastrando un panel de su título hasta un costado de la ventana. *Ver → Ancho del texto* ensancha la columna hasta toda la ventana
 - **Favoritos**: una estrella en cada archivo o carpeta lo suma a una sola lista para todas las carpetas abiertas, arriba del panel de archivos (se reordena arrastrando); debajo, un bloque RECIENTES opcional
 - **Buscar en las carpetas** (`Ctrl+Shift+F`): todos los archivos Markdown de las carpetas abiertas, resultados por archivo y línea, un clic abre el archivo en la coincidencia; un panel que se ubica como los otros
@@ -146,7 +146,7 @@ Markdown のタグは Vigía が書きます。文書は GitHub とまったく�
 - **テーマ**: ライト、ダーク、自動（Windows に合わせる）と、Windows 全体のアイコンとアプリの強調表示の色を変える色のカタログ（*表示 → テーマ…*）。既定はスカイブルー
 - **専用インスタンス**: ファイルやフォルダーを、メイン ウィンドウとは別の専用の Vigía で開けます（`--profile "名前"`、またはファイル パネルで右クリック → デスクトップにショートカット）
 - ステータス バーの **ズーム バー**（`Ctrl` + マウス ホイールでも可）。ウィンドウが狭いと、入らないボタンは ⋯ メニューに入ります
-- 検索と置換、スペル チェック。上にファイル、下に目次のサイド バー（端と 2 つの間の線をドラッグできます）
+- 検索と置換。英語・スペイン語・日本語を同時に調べるスペル チェック（複数言語の混在に対応、候補・無視・辞書に追加）。上にファイル、下に目次のサイド バー（端と 2 つの間の線をドラッグできます）
 - **レイアウト**: ファイルと目次は本文のどちら側にも、上下にも左右にも置けます。ツール バーのレイアウト ボタンの図（または *表示 → レイアウト*）から選ぶか、パネルのタイトルをウィンドウの端までドラッグします。*表示 → 本文の幅* で列をウィンドウ全体まで広げられます
 - **お気に入り**: ファイルやフォルダーの行の星で、開いているすべてのフォルダーに共通の一覧に加え、ファイル パネルの先頭に表示します（ドラッグで並べ替え）。その下に任意の「最近使ったファイル」ブロック
 - **フォルダー内を検索**（`Ctrl+Shift+F`）: 開いているフォルダーのすべての Markdown ファイルを検索し、結果はファイルと行ごと。クリックで一致箇所を開きます。ほかと同じように配置できるパネルです

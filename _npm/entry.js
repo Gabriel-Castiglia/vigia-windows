@@ -10,7 +10,15 @@ import { Marked } from 'marked';
 import markedAlert from 'marked-alert';
 import markedFootnote from 'marked-footnote';
 import markedKatex from 'marked-katex-extension';
-import hljs from 'highlight.js';
+// the GitHub view highlights with the ~40 common languages of highlight.js (and PowerShell, batch and Dockerfile);
+// a block in any other language loads the full set (hljs-all.js, ~1 MB) only then: app.js runRareCode
+import hljs from 'highlight.js/lib/common';
+import powershell from 'highlight.js/lib/languages/powershell';
+import dos from 'highlight.js/lib/languages/dos';
+import dockerfile from 'highlight.js/lib/languages/dockerfile';
+hljs.registerLanguage('powershell', powershell);
+hljs.registerLanguage('dos', dos);
+hljs.registerLanguage('dockerfile', dockerfile);
 import { nameToEmoji } from 'gemoji';
 import { diffArrays } from 'diff';
 import { TextSelection } from 'prosemirror-state';

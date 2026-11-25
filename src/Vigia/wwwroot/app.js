@@ -81,8 +81,10 @@
       code({ text, lang }) {
         const l = (lang || '').split(/\s+/)[0];
         if (l === 'mermaid') return '<pre class="mermaid">' + escapeHtml(text) + '</pre>';
+        // a language the bundle lacks: plain for now, highlighted by runRareCode once the full set is loaded
+        if (l && !hljs.getLanguage(l)) return '<pre><code class="hljs language-' + escapeHtml(l) + '" data-hl-lang="' + escapeHtml(l) + '">' + escapeHtml(text) + '</code></pre>';
         let html;
-        try { html = l && hljs.getLanguage(l) ? hljs.highlight(text, { language: l }).value : hljs.highlightAuto(text).value; }
+        try { html = l ? hljs.highlight(text, { language: l }).value : hljs.highlightAuto(text).value; }
         catch (e) { html = escapeHtml(text); }
         return '<pre><code class="hljs' + (l ? ' language-' + escapeHtml(l) : '') + '">' + html + '</code></pre>';
       },
@@ -186,10 +188,32 @@
     try { await mermaid.run({ nodes }); } catch (e) { /* invalid diagram: mermaid leaves its error text */ }
   }
 
+  let hljsAllLoading = null;
+  function loadHljsAll() {
+    if (window.hljsAll) return Promise.resolve();
+    if (!hljsAllLoading) hljsAllLoading = new Promise((ok, fail) => {
+      const s = document.createElement('script'); s.src = 'https://app.local/lib/hljs-all.js';
+      s.onload = ok; s.onerror = () => { hljsAllLoading = null; fail(); }; document.head.appendChild(s);
+    });
+    return hljsAllLoading;
+  }
+  // code blocks in a language bundle.js lacks (renderer.code): highlighted with every language of highlight.js
+  async function runRareCode(root) {
+    const nodes = root.querySelectorAll('code[data-hl-lang]');
+    if (!nodes.length) return;
+    try { await loadHljsAll(); } catch (e) { return; }
+    nodes.forEach((c) => {
+      const l = c.dataset.hlLang, text = c.textContent;
+      try { c.innerHTML = hljsAll.getLanguage(l) ? hljsAll.highlight(text, { language: l }).value : hljsAll.highlightAuto(text).value; } catch (e) { }
+      c.removeAttribute('data-hl-lang');
+    });
+  }
+
   async function showPreview() {
     const el = document.getElementById('preview');
     el.innerHTML = renderGithub(currentText());
     watchImages(el);
+    await runRareCode(el);
     await runMermaid(el);
     if (state.wiki) linkWiki(el);
   }
@@ -272,6 +296,87 @@
     }
   }
 
+
+  // ------------------------------------------------------------------ spell check
+  // The words are checked by the host (SpellChecker.cs: Hunspell, several languages at once); the page marks the
+  // ones it reports with a red wavy line, in the Visual and the Markdown views, and leaves code out. The browser's
+  // own checker is off (it keeps a single language). A right click on a marked word asks the host for its menu.
+  const spell = { bad: new Map(), asked: new Set(), views: new Set(), timer: 0, menu: null, key: null };
+  const WORD = /[\p{L}\p{M}](?:[\p{L}\p{M}'’]*[\p{L}\p{M}])?/gu;
+  function spellRanges(doc, md) {
+    const out = [];
+    let fence = false;
+    doc.descendants((node, pos, parent) => {
+      if (node.type.name === 'codeBlock' || node.type.name === 'customBlock' || node.type.name === 'frontMatter') return false;
+      if (md && node.isTextblock) {
+        const t = node.textContent;
+        if (/^\s*(```|~~~)/.test(t)) { fence = !fence; return false; }
+        if (fence || /^( {4}|\t)/.test(t)) return false;
+      }
+      if (!node.isText) return true;
+      if (node.marks.some((m) => m.type.name === 'code' || m.type.name === 'link')) return false;
+      let text = node.text;
+      // inline code and addresses of the Markdown view are not words to check
+      text = text.replace(/`[^`]*`|https?:\/\/\S+|\]\([^)]*\)|<[^>]+>|\S+@\S+\.\S+/g, (m) => ' '.repeat(m.length));
+      let m;
+      WORD.lastIndex = 0;
+      while ((m = WORD.exec(text))) out.push({ from: pos + m.index, to: pos + m.index + m[0].length, word: m[0] });
+      return false;
+    });
+    return out;
+  }
+  function spellAsk(words) {
+    const want = words.filter((w) => !spell.bad.has(w) && !spell.asked.has(w));
+    if (!want.length) return;
+    want.forEach((w) => spell.asked.add(w));
+    post({ type: 'spell', words: want.slice(0, 5000) });
+  }
+  function spellDecorations(ctx, doc, md) {
+    if (!state.spell) return ctx.pmView.DecorationSet.empty;
+    const ranges = spellRanges(doc, md);
+    const unknown = [];
+    const decos = [];
+    for (const r of ranges) {
+      const b = spell.bad.get(r.word);
+      if (b === undefined) unknown.push(r.word);
+      else if (b) decos.push(ctx.pmView.Decoration.inline(r.from, r.to, { class: 'gm-misspelled', 'data-word': r.word }));
+    }
+    if (unknown.length) { clearTimeout(spell.timer); spell.timer = setTimeout(() => spellAsk([...new Set(unknown)]), 250); }
+    return ctx.pmView.DecorationSet.create(doc, decos);
+  }
+  function spellPluginFor(ctx, md) {
+    const { Plugin, PluginKey } = ctx.pmState;
+    const key = new PluginKey('gmSpell' + (md ? 'Md' : 'Ww'));
+    return new Plugin({
+      key,
+      state: {
+        init: (_, st) => spellDecorations(ctx, st.doc, md),
+        apply: (tr, old, _o, st) => (tr.docChanged || tr.getMeta('gmSpell')) ? spellDecorations(ctx, st.doc, md) : old,
+      },
+      props: { decorations(st) { return key.getState(st); } },
+      view(v) { spell.views.add(v); return { destroy() { spell.views.delete(v); } }; },
+    });
+  }
+  function spellPlugin(ctx) {
+    return { markdownPlugins: [() => spellPluginFor(ctx, true)], wysiwygPlugins: [() => spellPluginFor(ctx, false)] };
+  }
+  function spellRedraw() {
+    spell.views.forEach((v) => { try { v.dispatch(v.state.tr.setMeta('gmSpell', true)); } catch (e) { } });
+  }
+  document.addEventListener('contextmenu', (e) => {
+    const el = e.target && e.target.closest && e.target.closest('.gm-misspelled');
+    if (!el || state.locked || state.mode === 'preview') return;
+    e.preventDefault();
+    for (const v of spell.views) {
+      if (!v.dom.contains(el)) continue;
+      try {
+        const from = v.posAtDOM(el, 0), to = v.posAtDOM(el, el.childNodes.length);
+        spell.menu = { v, from, to, word: el.dataset.word };
+      } catch (x) { spell.menu = null; }
+    }
+    if (spell.menu) post({ type: 'spellMenu', word: el.dataset.word });
+  });
+
   function build(markdown) {
     const el = document.getElementById('editorHost');
     if (editor) { try { editor.destroy(); } catch (e) { } editor = null; }
@@ -293,7 +398,7 @@
         usageStatistics: false,
         hideModeSwitch: true,
         autofocus: false,
-        plugins: [codeSyntaxHighlight],
+        plugins: [codeSyntaxHighlight, spellPlugin],
         toolbarItems: [],   // the toolbar is native (WPF)
         frontMatter: true,  // a block of properties at the top (--- ... ---) stays one block, kept as written
         events: {
@@ -468,7 +573,9 @@
 
   function applySpell() {
     document.documentElement.lang = state.lang;
-    document.querySelectorAll('.ProseMirror').forEach((e) => e.setAttribute('spellcheck', state.spell ? 'true' : 'false'));
+    // the browser's own checker stays off: the host checks (spell check section above)
+    document.querySelectorAll('.ProseMirror').forEach((e) => e.setAttribute('spellcheck', 'false'));
+    spellRedraw();
   }
 
   async function applyMode() {
@@ -926,6 +1033,22 @@
     setTheme(theme) { const t = editorText(); state.theme = theme; applyTheme(); build(t); applyMode(); },
     setMode(mode) { state.mode = mode; applyMode(); },
     setSpell(on) { state.spell = !!on; applySpell(); },
+    // the host's answer to a 'spell' message: the words no chosen language knows
+    spellResult(words, bad) { const b = new Set(bad); words.forEach((w) => { spell.asked.delete(w); spell.bad.set(w, b.has(w)); }); spellRedraw(); },
+    // languages or the dictionary changed: everything is asked again
+    spellReset() { spell.bad.clear(); spell.asked.clear(); spellRedraw(); },
+    // Ignore / Add to dictionary: the word is no longer marked
+    spellAccept(word) { spell.bad.set(word, false); spellRedraw(); },
+    // a suggestion picked in the host's menu replaces the word that was right-clicked
+    spellReplace(text) {
+      const m = spell.menu; spell.menu = null;
+      if (!m || state.locked || !spell.views.has(m.v)) return false;
+      if (m.v.state.doc.textBetween(m.from, m.to) !== m.word) return false;
+      m.v.dispatch(m.v.state.tr.insertText(text, m.from, m.to));
+      m.v.focus();
+      return true;
+    },
+    spellState() { return { bad: [...spell.bad].filter((x) => x[1]).map((x) => x[0]), marked: document.querySelectorAll('.gm-misspelled').length }; },
     // Width of the text column in the Visual and GitHub views, in px; 0 = the whole window.
     setWidth(px) {
       px = Number(px) || 0;
@@ -964,6 +1087,7 @@
       const tmp = document.createElement('div'); tmp.className = 'markdown-body'; tmp.style.cssText = 'position:absolute;left:-99999px;width:980px';
       document.body.appendChild(tmp);
       tmp.innerHTML = renderGithub(currentText());
+      await runRareCode(tmp);
       await runMermaid(tmp);
       const body = tmp.innerHTML; tmp.remove();
       post({ type: 'export', title, body, theme: state.theme, math: /class="katex/.test(body) });

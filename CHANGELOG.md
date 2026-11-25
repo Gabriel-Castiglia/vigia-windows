@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.3.0 — 2026-11-25
+
+- **Spell check in several languages at once**, on by default with English, Spanish and Japanese: a word is right
+  when any chosen language knows it, so a text that mixes languages is checked as a whole. The checking is done by
+  Vigía itself with Hunspell dictionaries (English and Spanish come with it; nothing to install in Windows): the
+  browser's own checker kept a single language and had no ignore list. Marked words get a red wavy line in the
+  Visual and Markdown views; code blocks, inline code and addresses are left out. Japanese text is never marked
+  (there is no Japanese spelling dictionary); the English and Spanish words inside it are checked.
+  - **Right-click a marked word**: its suggestions (a click replaces it), *Ignore (until Vigía closes)* — that word
+    stops being marked in every tab until Vigía is closed — and *Add to dictionary*, kept in this profile's
+    `settings.json`.
+  - **View → Spell check languages and dictionary…**: on/off, the languages (several at once), the words added to
+    the dictionary (select and *Remove*), and *Add a language…* for any Hunspell dictionary (`.dic` + `.aff`).
+  - *View → Spell check* turns it on or off in every open tab without touching their text or undo history.
+  - The dictionaries are in `dict/` with their licences (English: SCOWL, MIT/BSD; Spanish: RLA-ES, GPL/LGPL/MPL).
+- **Preview tab**: a click on a file in the Files panel (or in Favourites or Recent) shows it in a passing tab, its
+  name in italics, that the next click there reuses, so browsing a folder no longer leaves a tab per file. Typing in
+  it, or a double click on the file or on the tab, keeps it. *File → Preview tab for files from the panel* turns it
+  off.
+- **New tabs open at once**: a page is started ahead, hidden, and the next tab takes it; starting the page took 0.8 to
+  1.2 s per tab. The page is set up with the settings of the moment it is taken (language, theme, view).
+- **Signed updates**: a release's `SHA256SUMS.txt` must now carry the author's ECDSA P-256 signature
+  (`release.sig`), checked against a key built into Vigía, before the installer is downloaded; a release without a
+  valid signature is refused and never run (it can still be downloaded by hand from its page).
+- **Smaller page**: the GitHub view carries the ~40 common highlight.js languages (plus PowerShell, batch and
+  Dockerfile) instead of all of them; a code block in any other language loads the full set only then. `bundle.js`
+  goes from 2.5 MB to about 1.5 MB, so each page starts faster.
+- The browser's own spell checker is turned off in its profile (it loaded dictionaries nobody used).
+- The user manuals (English, Spanish, Japanese) explain the spell check, the preview tab and the signed updates.
+
 ## 3.2.1 — 2026-11-25
 
 - **A file with a table whose cells end in inline HTML** (`| x <sub>L-02</sub> |`, two rows or more) showed a blank

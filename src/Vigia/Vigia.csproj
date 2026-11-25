@@ -16,7 +16,7 @@
     <AssemblyName>Vigia</AssemblyName>
     <RootNamespace>Vigia</RootNamespace>
     <!-- The version is set here only: build.ps1, the installer and the About window read it. -->
-    <Version>3.2.1</Version>
+    <Version>3.3.0</Version>
     <Product>Vigia</Product>
     <Company>Gabriel Castiglia</Company>
     <Copyright>© 2026 Gabriel Castiglia</Copyright>
@@ -33,12 +33,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <!-- spell check: a .NET port of Hunspell (MIT), with the dictionaries in dict/ -->
+    <PackageReference Include="WeCantSpell.Hunspell" Version="7.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Vigia.ico" />
     <Resource Include="icons\*.ico" />
     <Content Include="Vigia.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="dict\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 

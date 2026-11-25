@@ -26,6 +26,10 @@ if (-not $SkipNpm) {
     if ($LASTEXITCODE) { throw "npm ci failed" }
     New-Item -ItemType Directory -Force (Join-Path $www "lib") | Out-Null
     npx esbuild entry.js --bundle --minify --format=iife --outfile="$www/lib/bundle.js"
+    if ($LASTEXITCODE) { throw "esbuild bundle.js failed" }
+    # every highlight.js language, loaded only when a code block needs one bundle.js lacks (app.js runRareCode)
+    npx esbuild hljs-all.js --bundle --minify --format=iife --outfile="$www/lib/hljs-all.js"
+    if ($LASTEXITCODE) { throw "esbuild hljs-all.js failed" }
     # TOAST UI 3.2.2 reads the first row of a <tbody> without checking that there is one, so a table with an
     # empty <tbody> (pandoc writes one for every one-row table) threw and left the page blank. Patched here;
     # the build stops if the code it fixes is not found exactly once.

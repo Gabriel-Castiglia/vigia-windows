@@ -46,6 +46,7 @@ public partial class MainWindow
         _folderProbe.Tick += (_, _) => ProbeRoots();
         FilesTree.PreviewMouseLeftButtonUp += OnTreeClick;
         FilesTree.PreviewKeyDown += OnTreeKey;
+        FilesTree.MouseDoubleClick += OnTreeDoubleClick;
         FilesOpenBtn.Click += (_, _) => PickFolder();
         FilesAdd.Click += (_, _) => PickFolder();
         FilesRefresh.Click += (_, _) => RefreshTree();
@@ -537,7 +538,14 @@ public partial class MainWindow
         if (Ancestor<TreeViewItem>(src) is not { Tag: string path } item) return;
         if (StarClicked(src, path)) { e.Handled = true; return; }   // the star of a row: favourite or not
         if (path.StartsWith("::")) { item.IsExpanded = !item.IsExpanded; return; }   // Favourites / Recent title
-        Activate(item, path);
+        Activate(item, path, preview: true);
+    }
+
+    /// <summary>A double click on a file row keeps its tab (no longer the passing one): the first click opened it.</summary>
+    private void OnTreeDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (Ancestor<TreeViewItem>(e.OriginalSource as DependencyObject) is not { Tag: string path } || path.StartsWith("::")) return;
+        if (FindTab(path) is { Preview: true } t) KeepTab(t);
     }
 
     private void OnTreeKey(object sender, KeyEventArgs e)
@@ -549,16 +557,16 @@ public partial class MainWindow
         Activate(item, path);
     }
 
-    private void Activate(TreeViewItem item, string path)
+    private void Activate(TreeViewItem item, string path, bool preview = false)
     {
         if (_roots.Contains(path, PathCmp) && _missing.Contains(path)) { Flash(string.Format(Strings.Get("FolderMissing"), path).Replace('\n', ' ')); return; }
         if (SafeDirExists(path)) { item.IsExpanded = !item.IsExpanded; return; }
         if (!File.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return; }   // deleted meanwhile
-        if (string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) return;
+        if (string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) { if (!preview) KeepTab(_cur); return; }
         // a file opened from Favourites leaves the folders as they are: no opening down to it, no scrolling
         // (Gabriel, 2026-11-25); opened from its folder, the panel follows it again
         if (InFavorites(item)) _noReveal.Add(path); else _noReveal.Remove(path);
-        OpenPath(path);
+        OpenPath(path, preview);
     }
 
     /// <summary>Files opened from Favourites: RevealCurrent leaves the tree alone for them.</summary>

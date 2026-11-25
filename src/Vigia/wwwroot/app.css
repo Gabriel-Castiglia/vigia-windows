@@ -172,3 +172,6 @@ body.dark .toastui-editor-ww-container [data-front-matter]::after { background: 
 .markdown-body details.gm-frontmatter ul { margin: 0; }
 body.dark .markdown-body details.gm-frontmatter { border-color: #3d444d; background: #151b23; }
 body.dark .markdown-body details.gm-frontmatter > summary { color: #9198a1; }
+
+/* spell check: words no chosen language knows (app.js, spell check section) */
+.gm-misspelled { text-decoration: underline wavy #e5484d; text-decoration-skip-ink: none; text-underline-offset: 2px; }
