@@ -176,7 +176,7 @@ Markdown のタグは Vigía が書きます。文書は GitHub とまったく�
 
 ## Build tools / Herramientas de compilación
 
-Vigía 3.2.0 was built and tested with / se compiló y probó con:
+Vigía 3.2.1 was built and tested with / se compiló y probó con:
 
 | Tool | Version |
 |---|---|
@@ -187,7 +187,7 @@ Vigía 3.2.0 was built and tested with / se compiló y probó con:
 | esbuild | 0.25.5 |
 | Inno Setup | 6.7.3 |
 | Microsoft Edge (manual PDFs) | 158.0.4370.33 |
-| Python (`-Art` only; not used for 3.2.0, the art did not change) | 3.13.17, Pillow 12.3.0, numpy 2.5.4, scipy 1.18.1, opencv-python 5.0.0 |
+| Python (`-Art` only; not used for 3.2.1, the art did not change) | 3.13.17, Pillow 12.3.0, numpy 2.5.4, scipy 1.18.1, opencv-python 5.0.0 |
 
 Web libraries / Bibliotecas web (exact versions in `_npm/package-lock.json`): TOAST UI Editor 3.2.2,
 marked 15.0.12, KaTeX 0.19.1, Mermaid 12.3.0, highlight.js 11.11.1, jsdiff 9.0.0, DOMPurify 3.4.17,

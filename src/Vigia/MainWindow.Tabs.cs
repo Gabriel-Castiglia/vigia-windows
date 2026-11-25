@@ -11,6 +11,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using WebView2 = Microsoft.Web.WebView2.Wpf.WebView2;
 
@@ -32,6 +33,8 @@ internal sealed class DocTab
     public long LastEditSeq;
     public FileSystemWatcher? Watcher;
     public bool ChangedOnDisk;            // its file changed while another tab was shown: checked when shown again
+    public int Saving;                    // > 0 while its text is being written: a tab switch waits for it
+    public bool ChangePending, ChangeAgain;   // a change on disk being handled (MainWindow.Features.cs OnExternalChange)
     public string RecoveryId = Guid.NewGuid().ToString("N");
     public string? WebSpell;              // spell check dictionary its browser was started with
     // what its page was last told, so showing the tab again only sends what changed meanwhile
@@ -151,8 +154,10 @@ public partial class MainWindow
     private async Task ActivateAsync(DocTab t)
     {
         if (t == _cur || !_tabs.Contains(t)) { RefreshTabs(); return; }
+        // a save of the shown tab is always waited for, however long the disk takes (a NAS, a file held by another
+        // program); other work on it for 5 s at most. The window keeps answering meanwhile.
         var end = DateTime.UtcNow.AddSeconds(5);
-        while (_docBusy > 0 && DateTime.UtcNow < end) await Task.Delay(15);
+        while ((_docBusy > 0 && DateTime.UtcNow < end) || _cur.Saving > 0) await Task.Delay(15);
         if (t == _cur || !_tabs.Contains(t)) return;
         var old = _cur;
         if (old.Ready)
@@ -170,21 +175,41 @@ public partial class MainWindow
         if (fresh) _ = InitWebAsync(t);
         else if (t.View!.CoreWebView2 != null && Math.Abs(t.View.ZoomFactor - _settings.Zoom) > 0.001) t.View.ZoomFactor = _settings.Zoom;
         OutlineList.Items.Clear(); OutlineEmpty.Visibility = Visibility.Visible;
-        RefreshTabs(); BuildMenu(); UpdateTitle(); UpdateStatus(); SyncZoom();
-        if (!t.Ready) { await ReplayHeldAsync(t); return; }   // a page still starting may have said "ready" meanwhile
+        // The tab comes first: its page shown and focused, the strip, the title and the status bar. The menu, the
+        // Files panel (which may read folders to open them down to the file), the outline and a change on disk
+        // follow once the window has painted (Background priority): before 3.2.1 they all ran before the switch
+        // could be seen, and switching tabs felt slow.
+        RefreshTabs(); UpdateTitle(reveal: false); UpdateStatus(); SyncZoom();
+        if (!t.Ready) { AfterSwitch(t, pageReady: false); await ReplayHeldAsync(t); return; }   // a page still starting may have said "ready" meanwhile
         await SyncPageAsync();
         if (t != _cur) return;
-        await ReplayHeldAsync(t);
-        await Js("mdApp.outline()");
-        if (FindBar.Visibility == Visibility.Visible) await FindRun(0);
-        if (t.ChangedOnDisk && t.Path != null)
-        {
-            t.ChangedOnDisk = false;
-            if (SafeFileExists(t.Path)) OnExternalChange(t.Path); else OnPossiblyGone(t.Path);
-        }
         Web.Focus();
         await Js("mdApp.focus()");
+        await ReplayHeldAsync(t);
+        AfterSwitch(t, pageReady: true);
     }
+
+    /// <summary>The rest of a tab switch, once the tab can be seen (ActivateAsync). Dropped if another tab is shown
+    /// by then: that switch does its own.</summary>
+    private void AfterSwitch(DocTab t, bool pageReady) => Dispatcher.BeginInvoke(DispatcherPriority.Background, async () =>
+    {
+        try
+        {
+            if (t != _cur) return;
+            BuildMenu();
+            RevealCurrent();
+            if (!pageReady || !t.Ready) return;
+            await Js("mdApp.outline()");
+            if (t != _cur) return;
+            if (FindBar.Visibility == Visibility.Visible) await FindRun(0);
+            if (t.ChangedOnDisk && t.Path != null && t == _cur)
+            {
+                t.ChangedOnDisk = false;
+                if (SafeFileExists(t.Path)) OnExternalChange(t.Path); else OnPossiblyGone(t.Path);
+            }
+        }
+        catch (Exception ex) { LogError("AfterSwitch", ex); }
+    });
 
     private async Task ReplayHeldAsync(DocTab t)
     {
@@ -446,7 +471,13 @@ public partial class MainWindow
         // with Reopen tabs at start on, the session is written as the tabs change, not only on closing: it survives
         // a crash or a power cut too
         // (not while the window is closing: asking about each unsaved tab shows it, and the shown tab must stay the one left)
-        if (_settings.RestoreTabs && _folderInit && !_windowClosing && !Settings.IsSecondary) { SaveTabSession(); _settings.Save(); }
+        // (and only when the tabs changed: RefreshTabs runs on every switch and every name change)
+        if (_settings.RestoreTabs && _folderInit && !_windowClosing && !Settings.IsSecondary)
+        {
+            var files = _settings.OpenTabs.ToList(); int active = _settings.ActiveTab;
+            SaveTabSession();
+            if (active != _settings.ActiveTab || !files.SequenceEqual(_settings.OpenTabs, PathCmp)) _settings.Save();
+        }
     }
 
     private void RefreshTabHeader(DocTab t)

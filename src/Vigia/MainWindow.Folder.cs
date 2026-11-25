@@ -292,6 +292,8 @@ public partial class MainWindow
                 }
             }
             Collect(FilesTree.Items);
+            var scroll = FindChild<ScrollViewer>(FilesTree);
+            double offset = scroll?.VerticalOffset ?? 0;
             FilesTree.Items.Clear();
             foreach (var block in new[] { MakeFavoritesRoot(), MakeRecentRoot() })
             {
@@ -310,11 +312,47 @@ public partial class MainWindow
                 if (open) { node.IsExpanded = true; Restore(node.Items, expanded); }
             }
             _expandNext = null;
-            _revealedPath = null;
-            RevealCurrent();
+            // Rebuilt because a file came or went (the folder watchers, a sync, another program writing): the current
+            // file was already shown, so the folders stay as the user left them and the list does not scroll. Before,
+            // every rebuild opened the folders down to the current file again and scrolled to it.
+            bool shown = _path != null && _revealedPath != null && PathCmp.Equals(_revealedPath, _path);
+            if (shown)
+            {
+                SelectCurrentQuietly();
+                if (scroll != null) Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => scroll.ScrollToVerticalOffset(offset));
+            }
+            else { _revealedPath = null; RevealCurrent(); }
             UpdateExpandButton();
         }
         catch { }
+    }
+
+    /// <summary>Selects the current file's row if its folder is open, without opening folders or scrolling.</summary>
+    private void SelectCurrentQuietly()
+    {
+        if (_path == null) return;
+        TreeViewItem? found = null;
+        void Look(ItemCollection items)
+        {
+            foreach (var i in items.OfType<TreeViewItem>())
+            {
+                if (i.Tag is string p && PathCmp.Equals(p, _path)) found = i;   // the last one: its folder, not Favourites
+                if (i.IsExpanded) Look(i.Items);
+            }
+        }
+        Look(FilesTree.Items);
+        if (found != null) found.IsSelected = true;
+    }
+
+    private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var c = VisualTreeHelper.GetChild(parent, i);
+            if (c is T t) return t;
+            if (FindChild<T>(c) is { } deeper) return deeper;
+        }
+        return null;
     }
 
     private void FitFilesTitle()
@@ -416,7 +454,14 @@ public partial class MainWindow
             item.Items.Add(Placeholder);   // filled when first expanded
             item.Expanded += OnNodeExpanded;
         }
-        item.ContextMenu = isDir ? FolderMenu(path) : FileMenu(path);
+        // the menu is built when it opens: building one for every row made rebuilding the tree (which the folder
+        // watchers do often) slow on large folders. A row in Favourites opens its file without touching the tree.
+        item.ContextMenu = new ContextMenu();
+        item.ContextMenuOpening += (_, e) =>
+        {
+            if (!ReferenceEquals(Ancestor<TreeViewItem>(e.OriginalSource as DependencyObject), item)) return;   // a row inside this one
+            item.ContextMenu = isDir ? FolderMenu(path) : FileMenu(path, InFavorites(item));
+        };
         return item;
     }
 
@@ -510,7 +555,20 @@ public partial class MainWindow
         if (SafeDirExists(path)) { item.IsExpanded = !item.IsExpanded; return; }
         if (!File.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return; }   // deleted meanwhile
         if (string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) return;
+        // a file opened from Favourites leaves the folders as they are: no opening down to it, no scrolling
+        // (Gabriel, 2026-11-25); opened from its folder, the panel follows it again
+        if (InFavorites(item)) _noReveal.Add(path); else _noReveal.Remove(path);
         OpenPath(path);
+    }
+
+    /// <summary>Files opened from Favourites: RevealCurrent leaves the tree alone for them.</summary>
+    private readonly HashSet<string> _noReveal = new(StringComparer.OrdinalIgnoreCase);
+
+    private static bool InFavorites(TreeViewItem item)
+    {
+        for (var p = ItemsControl.ItemsControlFromItemContainer(item); p != null; p = ItemsControl.ItemsControlFromItemContainer(p))
+            if (p is TreeViewItem { Tag: FavTag }) return true;
+        return false;
     }
 
     // ------------------------------------------------------------------ menus
@@ -522,11 +580,17 @@ public partial class MainWindow
         return mi;
     }
 
-    private ContextMenu FileMenu(string path) => new()
+    private ContextMenu FileMenu(string path, bool fromFavorites = false) => new()
     {
         Items =
         {
-            MenuEntry(Strings.Plain("FileOpen"), () => { if (!File.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); } else if (!string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) OpenPath(path); }),
+            MenuEntry(Strings.Plain("FileOpen"), () =>
+            {
+                if (!File.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return; }
+                if (string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) return;
+                if (fromFavorites) _noReveal.Add(path); else _noReveal.Remove(path);   // as a click on the row (Activate)
+                OpenPath(path);
+            }),
             MenuEntry(Strings.Get("OpenNewWindow"), () => StartSelf("--new-window", path)),
             MenuEntry(Strings.Get("OpenDedicated"), () => OpenDedicated(path)),
             MenuEntry(Strings.Get("DedicatedShortcut"), () => DedicatedShortcut(path)),
@@ -548,19 +612,23 @@ public partial class MainWindow
     {
         try
         {
-            if (!File.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return; }
-            var source = await File.ReadAllTextAsync(path);      // follows a BOM, UTF-8 otherwise
-            var text = JsonSerializer.Deserialize<string>(await Js("mdApp.plainText(" + JsonSerializer.Serialize(source) + ")"));
-            if (text == null) { Flash(string.Format(Strings.Get("TxtFailed"), Path.GetFileName(path))); return; }
-            var dir = Path.GetDirectoryName(path)!;
-            var name = Path.GetFileNameWithoutExtension(path);
-            var target = Path.Combine(dir, name + ".txt");
-            for (int n = 2; File.Exists(target); n++) target = Path.Combine(dir, $"{name} ({n}).txt");
-            using (var fs = new FileStream(target, FileMode.CreateNew))
-            using (var w = new StreamWriter(fs, new UTF8Encoding(false))) w.Write(text.Replace("\n", "\r\n"));
-            Flash(string.Format(Strings.Get("TxtDone"), Path.GetFileName(target)));
+            try
+            {
+                if (!File.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return; }
+                var source = await File.ReadAllTextAsync(path);      // follows a BOM, UTF-8 otherwise
+                var text = JsonSerializer.Deserialize<string>(await Js("mdApp.plainText(" + JsonSerializer.Serialize(source) + ")"));
+                if (text == null) { Flash(string.Format(Strings.Get("TxtFailed"), Path.GetFileName(path))); return; }
+                var dir = Path.GetDirectoryName(path)!;
+                var name = Path.GetFileNameWithoutExtension(path);
+                var target = Path.Combine(dir, name + ".txt");
+                for (int n = 2; File.Exists(target); n++) target = Path.Combine(dir, $"{name} ({n}).txt");
+                using (var fs = new FileStream(target, FileMode.CreateNew))
+                using (var w = new StreamWriter(fs, new UTF8Encoding(false))) w.Write(text.Replace("\n", "\r\n"));
+                Flash(string.Format(Strings.Get("TxtDone"), Path.GetFileName(target)));
+            }
+            catch (Exception e) { Flash(string.Format(Strings.Get("TxtFailed"), e.Message)); }
         }
-        catch (Exception e) { Flash(string.Format(Strings.Get("TxtFailed"), e.Message)); }
+        catch (Exception ex) { LogError("ConvertToText", ex); }
     }
 
     private ContextMenu FolderMenu(string path) => new()
@@ -709,9 +777,11 @@ public partial class MainWindow
         try
         {
             var w = new FileSystemWatcher(dir) { IncludeSubdirectories = true, NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName, InternalBufferSize = 64 * 1024 };
-            w.Created += (_, _) => ScheduleRefresh();
-            w.Deleted += (_, _) => ScheduleRefresh();
-            w.Renamed += (_, _) => ScheduleRefresh();
+            // a save (ours: AtomicFile) creates, renames and deletes temporary files: not a change of the tree. A
+            // temporary file renamed to a NEW name is (a file created by Save as), so it refreshes.
+            w.Created += (_, e) => { if (!AtomicFile.IsTemporaryName(e.FullPath)) ScheduleRefresh(); };
+            w.Deleted += (_, e) => { if (!AtomicFile.IsTemporaryName(e.FullPath)) ScheduleRefresh(); };
+            w.Renamed += (_, e) => { if (!(AtomicFile.ExplainedByWrite(e.FullPath) && AtomicFile.ExplainedByWrite(e.OldFullPath))) ScheduleRefresh(); };
             // the folder itself was deleted, or a network drive went away, or too many changes at once
             w.Error += (_, _) => Dispatcher.BeginInvoke(() => { StopWatching(dir); ScheduleRefresh(); });
             w.EnableRaisingEvents = true;
@@ -745,6 +815,7 @@ public partial class MainWindow
     {
         if (_roots.Count == 0 || _path == null || _revealedPath == _path) return;
         _revealedPath = _path;
+        if (_noReveal.Contains(_path)) return;   // opened from Favourites: the tree stays as it is
         var root = _roots.Where(r => _path.StartsWith(r.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                          .OrderByDescending(r => r.Length).FirstOrDefault();
         if (root == null || _missing.Contains(root))

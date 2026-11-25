@@ -200,7 +200,14 @@ public partial class MainWindow
             // this one, or by deleting and recreating it: every one of those is a change to reload.
             w.Changed += (_, _) => Changed(false);
             w.Created += (_, _) => Changed(false);
-            w.Renamed += (_, e) => Changed(!string.Equals(e.FullPath, path, StringComparison.OrdinalIgnoreCase));
+            // our own save renames the file away for a moment ("a.md -> a.md~RF1a2b.TMP") and puts the new one in its
+            // place: not a deletion. It is still checked as a change (the text is compared, so nothing shows), so a
+            // real change by another program in the same seconds is not missed.
+            w.Renamed += (_, e) =>
+            {
+                bool away = !string.Equals(e.FullPath, path, StringComparison.OrdinalIgnoreCase);
+                Changed(away && !(AtomicFile.IsTemporaryName(e.FullPath) && AtomicFile.JustReplaced(path)));
+            };
             w.Deleted += (_, _) => Changed(true);
             tab.Watcher = w;
             w.EnableRaisingEvents = true;
@@ -211,45 +218,55 @@ public partial class MainWindow
     /// <summary>Deleted or renamed away: a save by replacement brings it back a moment later.</summary>
     private async void OnPossiblyGone(string path)
     {
-        await Task.Delay(600);
-        if (!string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) return;
-        if (File.Exists(path)) OnExternalChange(path);
-        else Flash(Strings.Get("DeletedOnDisk"));
+        try
+        {
+            await Task.Delay(600);
+            if (!string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) return;
+            if (File.Exists(path)) OnExternalChange(path);
+            else Flash(Strings.Get("DeletedOnDisk"));
+        }
+        catch (Exception ex) { LogError("OnPossiblyGone", ex); }
     }
 
-    private bool _changePending, _changeAgain;
+    /// <summary>The shown tab's file changed on disk. The state of the handling is the tab's own: a change of another
+    /// tab's file while this one is handled is no longer lost. If another tab is shown meanwhile, this one is checked
+    /// again when it is shown back.</summary>
     private async void OnExternalChange(string path)
     {
-        if (!string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) return;
-        if (_changePending) { _changeAgain = true; return; }   // a burst of writes: read once more at the end
-        _changePending = true;
+        var t = _cur;
+        if (!string.Equals(path, t.Path, StringComparison.OrdinalIgnoreCase)) return;
+        if (t.ChangePending) { t.ChangeAgain = true; return; }   // a burst of writes: read once more at the end
+        t.ChangePending = true;
         bool reloaded = false;
         try
         {
             do
             {
-                _changeAgain = false;
+                t.ChangeAgain = false;
                 await Task.Delay(250);   // let the other program finish writing
-                if (!File.Exists(path) || !string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) return;
+                if (!_tabs.Contains(t) || !File.Exists(path) || !string.Equals(path, t.Path, StringComparison.OrdinalIgnoreCase)) return;
+                if (t != _cur) { t.ChangedOnDisk = true; return; }   // handled when its tab is shown again
                 var now = PeekDocument(path);
-                if (now == null) { _changeAgain = true; await Task.Delay(250); continue; }   // still being written
+                if (now == null) { t.ChangeAgain = true; await Task.Delay(250); continue; }   // still being written
                 // Our own save (autosave writes often), or a touch without a change. Comparing the text
                 // and not the time since the last save: another program may write a second after us.
-                if (now == _diskText) continue;
-                if (_dirty)
+                if (now == t.DiskText) continue;
+                if (t.Dirty)
                 {
                     // Keep my changes (Escape) · Reload (default), as on the Mac
                     int r = ChoiceDialog.Ask(this, string.Format(Strings.Get("ChangedOnDisk"), Path.GetFileName(path)),
                         new[] { Strings.Get("KeepMine"), Strings.Get("ReloadBtn") }, 0);
-                    if (r != 1) { _diskText = now; return; }   // asked about this version; a newer one asks again
-                    _dirty = false;
+                    if (r != 1) { t.DiskText = now; return; }   // asked about this version; a newer one asks again
+                    t.Dirty = false;
                 }
-                if (await ReloadFromDiskAsync(path)) reloaded = true;
-                else { _changeAgain = true; await Task.Delay(250); }
-            } while (_changeAgain);
-            if (reloaded) Flash(Strings.Get("Reloaded"));
+                if (t != _cur) { t.ChangedOnDisk = true; return; }
+                if (await ReloadFromDiskAsync(t, path)) reloaded = true;
+                else { t.ChangeAgain = true; await Task.Delay(250); }
+            } while (t.ChangeAgain);
+            if (reloaded && t == _cur) Flash(Strings.Get("Reloaded"));
         }
-        finally { _changePending = false; _changeAgain = false; }
+        catch (Exception ex) { LogError("OnExternalChange", ex); }
+        finally { t.ChangePending = false; t.ChangeAgain = false; }
     }
 
     /// <summary>The text on disk as ReadDocument gives it, without touching the document's state;
@@ -268,18 +285,18 @@ public partial class MainWindow
 
     /// <summary>Reads the file again and swaps the text in place, keeping the scroll position of
     /// every view. False while the other program still holds the file (tried again).</summary>
-    private async Task<bool> ReloadFromDiskAsync(string path)
+    private async Task<bool> ReloadFromDiskAsync(DocTab t, string path)
     {
         using var busy = DocBusy();
         string text;
-        try { text = ReadDocument(path); }
+        try { text = ReadDocument(path, t); }
         catch (IOException) { return false; }
         catch (UnauthorizedAccessException) { return false; }
-        _diskText = text;
-        await Js($"mdApp.reload({Q(text)})");
-        _dirty = false;
-        _words = int.TryParse(await Js("mdApp.words()"), out var n) ? n : 0;
-        UpdateTitle(); UpdateStatus();
+        t.DiskText = text;
+        await JsIn(t, $"mdApp.reload({Q(text)})");
+        t.Dirty = false;
+        t.Words = int.TryParse(await JsIn(t, "mdApp.words()"), out var n) ? n : 0;
+        if (t == _cur) { UpdateTitle(); UpdateStatus(); } else RefreshTabHeader(t);
         return true;
     }
 
@@ -288,7 +305,7 @@ public partial class MainWindow
     // over a change made by another program (the live reload asks first), never a new untitled
     // document or the sample, and never while saving or reloading.
     private bool CanAutoSave() =>
-        _settings.AutoSave && _ready && _path != null && !_isSample && !_saving && !_changePending
+        _settings.AutoSave && _ready && _path != null && !_isSample && !_saving && !_cur.ChangePending
         && PeekDocument(_path) is { } now && now == _diskText;
 
     private void ScheduleAutoSave()
@@ -301,7 +318,7 @@ public partial class MainWindow
     {
         _autoSaveTimer.Stop();
         if (!_dirty || _path == null) return;
-        if (_saving || _changePending || (File.Exists(_path) && PeekDocument(_path) == null)) { ScheduleAutoSave(); return; }   // busy: later
+        if (_saving || _cur.ChangePending || (File.Exists(_path) && PeekDocument(_path) == null)) { ScheduleAutoSave(); return; }   // busy: later
         if (CanAutoSave()) await SaveAsync(false, auto: true);
     }
 
@@ -325,19 +342,50 @@ public partial class MainWindow
     {
         if (!_dirty || !_ready) return;
         using var busy = DocBusy();
+        await SaveRecoveryOfAsync(_cur);
+    }
+
+    /// <summary>The draft of one tab, shown or not.</summary>
+    private static async Task SaveRecoveryOfAsync(DocTab t)
+    {
+        if (!t.Dirty || !t.Ready) return;
         try
         {
             Directory.CreateDirectory(RecoveryDir);
-            var md = JsonSerializer.Deserialize<string>(await Js("mdApp.getMarkdownPreserving()")) ?? "";
-            File.WriteAllText(DraftPath, md, new UTF8Encoding(false));
-            File.WriteAllText(DraftMeta, JsonSerializer.Serialize(new { path = _path, pid = Environment.ProcessId, time = DateTime.Now }));
+            var md = JsonSerializer.Deserialize<string>(await JsIn(t, "mdApp.getMarkdownPreserving()")) ?? "";
+            AtomicFile.WriteAllText(Path.Combine(RecoveryDir, t.RecoveryId + ".md"), md, new UTF8Encoding(false));
+            AtomicFile.WriteAllText(Path.Combine(RecoveryDir, t.RecoveryId + ".json"),
+                JsonSerializer.Serialize(new { path = t.Path, pid = Environment.ProcessId, time = DateTime.Now }), new UTF8Encoding(false));
         }
         catch { /* best effort */ }
     }
 
-    private void ClearRecovery()
+    /// <summary>After an unexpected error: the drafts of every tab with unsaved changes, so nothing typed is lost if the
+    /// window does not survive it (App.xaml.cs).</summary>
+    internal async Task SaveAllRecoveryAsync()
     {
-        try { File.Delete(DraftPath); File.Delete(DraftMeta); } catch { }
+        foreach (var t in _tabs.ToList()) await SaveRecoveryOfAsync(t);
+    }
+
+    /// <summary>An unexpected error, in error.log beside the settings (each profile its own), so it can be looked at
+    /// afterwards. The log is started again past 1 MB.</summary>
+    internal static void LogError(string where, Exception? ex)
+    {
+        try
+        {
+            Directory.CreateDirectory(Settings.Dir);
+            var f = Path.Combine(Settings.Dir, "error.log");
+            if (File.Exists(f) && new FileInfo(f).Length > 1_000_000) File.Delete(f);
+            File.AppendAllText(f, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{where}] Vigía {Version}{Environment.NewLine}{ex}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch { /* nowhere to write: nothing more to do */ }
+    }
+
+    private void ClearRecovery() => ClearRecoveryOf(_cur);
+
+    private static void ClearRecoveryOf(DocTab t)
+    {
+        try { File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".md")); File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".json")); } catch { }
     }
 
     private void ClearAllRecovery()
@@ -391,8 +439,12 @@ public partial class MainWindow
     /// <summary>A second Vigia passed us its files and folders (or just asked to be shown): a tab per file.</summary>
     public async void ActivateFromOtherInstance(IReadOnlyList<string> paths)
     {
-        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
-        Activate(); Topmost = true; Topmost = false; Focus();
-        foreach (var p in paths.Where(p => !string.IsNullOrEmpty(p))) await OpenPathAsync(p);
+        try
+        {
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate(); Topmost = true; Topmost = false; Focus();
+            foreach (var p in paths.Where(p => !string.IsNullOrEmpty(p))) await OpenPathAsync(p);
+        }
+        catch (Exception ex) { LogError("ActivateFromOtherInstance", ex); }
     }
 }

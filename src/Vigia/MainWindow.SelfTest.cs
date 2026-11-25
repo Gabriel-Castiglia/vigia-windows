@@ -313,6 +313,7 @@ public partial class MainWindow
             Check("tabs: closing one takes it out", ok && FindTab(tb) == null && _tabs.Count == count - 1, $"tabs {_tabs.Count}");
             await ReopenClosedTabAsync();
             Check("tabs: Reopen closed tab brings it back", FindTab(tb) != null && _path == tb, _path ?? "(none)");
+            tabB = FindTab(tb);   // reopening makes a new tab: the closed one is gone for good
 
             // the session: kept only with the option on, untitled tabs left out, the shown tab remembered
             _settings.RestoreTabs = true; SaveTabSession();
@@ -323,6 +324,62 @@ public partial class MainWindow
             _settings.RestoreTabs = false; SaveTabSession();
             Check("tabs: with it off, nothing is kept", _settings.OpenTabs.Count == 0, string.Join(" | ", _settings.OpenTabs));
             Check("tabs: an update reopens every tab, the shown one last", TabFiles().LastOrDefault() == tb && TabFiles().Contains(ta), string.Join(" | ", TabFiles()));
+
+            // a save that is still writing when another tab is asked for finishes on its own tab: the switch waits for
+            // it, and neither file takes the other's path or text (3.2.0 could write the second document over the first)
+            await ActivateAsync(tabA!);
+            AutoSaveBtn.IsChecked = false;
+            await Js("mdApp.focus(); mdApp.insertText('raced ')");
+            await WaitFor(() => Task.FromResult(_dirty), 3);
+            var racing = SaveAsync(false);
+            await ActivateAsync(tabB!);
+            bool raceSaved = await racing;
+            bool onB = _cur == tabB, aClean = !tabA!.Dirty;
+            bool aHas = File.ReadAllText(ta).Contains("raced"), bHas = File.ReadAllText(tb).Contains("raced");
+            ok = raceSaved && onB && tabA.Path == ta && tabB!.Path == tb && aClean && aHas && !bHas;
+            Check("save: a tab switch during a save waits for it, each file keeps its own text", ok,
+                  $"saved {raceSaved}, on B {onB}, A clean {aClean}, A has it {aHas}, B has it {bHas}, A {tabA.Path}, B {tabB!.Path}");
+            AutoSaveBtn.IsChecked = true;
+
+            // writing in one step: the text, its BOM, a read-only file refused as before, no temporary file left behind
+            var atomicDir = Path.Combine(tmp, "atomic"); Directory.CreateDirectory(atomicDir);
+            var af = Path.Combine(atomicDir, "a.md");
+            File.WriteAllText(af, "old\n");
+            AtomicFile.WriteAllText(af, "new text\r\n", new UTF8Encoding(true));
+            var afBytes = File.ReadAllBytes(af);
+            bool afOk = afBytes.Length > 3 && afBytes[0] == 0xEF && File.ReadAllText(af) == "new text\r\n";
+            File.SetAttributes(af, FileAttributes.ReadOnly);
+            bool refused = false;
+            try { AtomicFile.WriteAllText(af, "x", new UTF8Encoding(false)); } catch (UnauthorizedAccessException) { refused = true; }
+            File.SetAttributes(af, FileAttributes.Normal);
+            ok = afOk && refused && File.ReadAllText(af) == "new text\r\n" && Directory.GetFiles(atomicDir).Length == 1;
+            Check("save: written in one step, BOM kept, a read-only file refused, nothing left behind", ok, string.Join(" | ", Directory.GetFiles(atomicDir).Select(Path.GetFileName)));
+
+            // a save raises file-name events the Files panel must not rebuild the tree for; a new file still does
+            int treeEvents = 0;
+            using (var fw = new FileSystemWatcher(atomicDir) { NotifyFilter = NotifyFilters.FileName, IncludeSubdirectories = true })
+            {
+                fw.Created += (_, e) => { if (!AtomicFile.IsTemporaryName(e.FullPath)) Interlocked.Increment(ref treeEvents); };
+                fw.Deleted += (_, e) => { if (!AtomicFile.IsTemporaryName(e.FullPath)) Interlocked.Increment(ref treeEvents); };
+                fw.Renamed += (_, e) => { if (!(AtomicFile.ExplainedByWrite(e.FullPath) && AtomicFile.ExplainedByWrite(e.OldFullPath))) Interlocked.Increment(ref treeEvents); };
+                fw.EnableRaisingEvents = true;
+                for (int i = 0; i < 3; i++) AtomicFile.WriteAllText(af, $"save {i}\n", new UTF8Encoding(false));
+                await Task.Delay(500);
+                int afterSaves = treeEvents;
+                AtomicFile.WriteAllText(Path.Combine(atomicDir, "brand-new.md"), "new\n", new UTF8Encoding(false));
+                await Task.Delay(500);
+                ok = afterSaves == 0 && treeEvents > 0 && AtomicFile.IsTemporaryName("a.md~RF1a2b3c.TMP") && AtomicFile.IsTemporaryName(".a.md.0123abcd.tmp")
+                     && !AtomicFile.IsTemporaryName("notes.md") && AtomicFile.JustReplaced(af) && !AtomicFile.JustReplaced(Path.Combine(atomicDir, "brand-new.md"));
+                Check("files panel: a save does not rebuild the tree, a new file does", ok, $"after saves {afterSaves}, after new file {treeEvents}");
+            }
+
+            // settings.json unreadable: the copy of the previous save is read, not the defaults
+            var probe = new Settings { TextWidth = 1280 }; probe.Save();
+            probe.TextWidth = 1600; probe.Save();
+            File.WriteAllText(Settings.FilePathForTest, "{ broken");
+            var back = Settings.Load();
+            Check("settings: a broken settings.json gives the previous save, not the defaults", back.TextWidth == 1280, $"width {back.TextWidth}");
+            _settings.Save();   // the window's own settings again
 
             // the tree's button: collapse all while something is open, expand all (every level) when all is closed
             CloseAllFolders(); OpenFolder(tabsDir, showPanel: true); UpdateLayout();

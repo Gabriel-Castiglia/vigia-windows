@@ -1,5 +1,36 @@
 # Changelog
 
+## 3.2.1 — 2026-11-25
+
+- **A file with a table whose cells end in inline HTML** (`| x <sub>L-02</sub> |`, two rows or more) showed a blank
+  page in the Visual view, an empty outline and 0 words, while the GitHub view showed it whole: the editor library
+  (TOAST UI) left its conversion unbalanced and returned an empty document. Each table cell now closes what it opened,
+  and the file shows in every view. An edit made on that blank page could have saved an almost empty file.
+- **`Ctrl+Z` right after opening a file emptied the document**, and autosave then wrote a single line break over the
+  file: the loading of the text was kept in the undo history. It is cleared after a file is opened or reloaded from
+  disk, so undo only takes back what was typed.
+- **Saving writes the file in one step**: the text goes to a temporary file next to it, reaches the disk, and then
+  takes the place of the old one (attributes and permissions kept). A power cut, a crash or an antivirus in the middle
+  of a save leaves the old version or the new one, never an empty or cut file. Recovery drafts and `settings.json`
+  are written the same way; `settings.json.bak` keeps the previous settings and is read when the file is damaged, so
+  a dedicated instance no longer loses its folders, favourites and colours to a broken file. Autosave no longer
+  rewrites the settings each time.
+- **Closing the window and choosing *Don't save*** with a document that could not be autosaved (untitled, or
+  autosave off) crashed the program; it closes normally now. An unexpected error no longer closes Vigía without
+  warning: it is written to `error.log` in the settings folder and the drafts of every tab are saved.
+- **Tabs**: a save that took long (a network folder, a file held by another program) while you switched tabs could
+  finish on the other tab and later write its text into the first file. A save, and a reload after a change on disk,
+  now always works on the tab it started on, and a tab switch waits for that tab's save to end. A change on disk
+  that arrived while another one was being handled is no longer lost.
+- **Switching tabs is faster**: the page is shown and focused first; the menu, the outline and the Files panel catch
+  up right after.
+- **Files panel**: the tree no longer jumps. A change on disk (a file created, renamed or deleted by another program
+  or a sync tool) refreshes it without opening folders again or scrolling, and saving a file no longer rebuilds it.
+  A file opened from Favourites (a click, `Enter` or *Open* in its right-click menu) leaves the trees as they are;
+  opened from its folder, the panel still follows it. The right-click menus of the rows are built when they open.
+- **Network pictures** (`\\server\share\a.png`) show only from the document's folder or a folder open in the panel;
+  others are blocked, so a downloaded Markdown file cannot make Windows send your credentials to a server.
+
 ## 3.2.0 — 2026-11-24
 
 - **Japanese** (日本語): the whole interface — menus, toolbar, tooltips, dialogs, panes, the editor's own menus and

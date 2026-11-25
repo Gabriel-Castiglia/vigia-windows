@@ -27,8 +27,38 @@ public partial class App : Application
         return null;
     }
 
+    /// <summary>An error nothing else caught: written to error.log and the drafts of every window saved. An error on the
+    /// window's thread is then let go, so the window stays open with what was typed (before 3.2.1 it closed at once,
+    /// without the drafts); an error elsewhere still ends the program, with the log written first.</summary>
+    private void CatchUnexpected()
+    {
+        DispatcherUnhandledException += (_, ev) =>
+        {
+            Vigia.MainWindow.LogError("window", ev.Exception);
+            SaveDrafts();
+            ev.Handled = true;
+        };
+        TaskScheduler.UnobservedTaskException += (_, ev) =>
+        {
+            Vigia.MainWindow.LogError("task", ev.Exception);
+            ev.SetObserved();
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, ev) =>
+        {
+            Vigia.MainWindow.LogError("program" + (ev.IsTerminating ? " (ending)" : ""), ev.ExceptionObject as Exception);
+            try { Dispatcher.Invoke(SaveDrafts); } catch { }
+        };
+    }
+
+    private void SaveDrafts()
+    {
+        foreach (var w in Windows.OfType<MainWindow>())
+            try { _ = w.SaveAllRecoveryAsync(); } catch { /* best effort */ }
+    }
+
     private void OnStartup(object sender, StartupEventArgs e)
     {
+        CatchUnexpected();
         Settings.MigrateFromGryphmark();   // before anything writes under %APPDATA%\Vigia (Settings.cs)
         if (e.Args.Contains("--after-update"))   // run by the installer after an update (MainWindow.Update.cs)
         {

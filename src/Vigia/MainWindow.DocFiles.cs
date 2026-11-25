@@ -64,6 +64,16 @@ public partial class MainWindow
     private bool InReach(string path, string? docPath) =>
         docPath != null && Wiki.Reach(Path.GetDirectoryName(docPath), _roots).Any(r => Wiki.Inside(path, r));
 
+    /// <summary>A picture on this computer shows from anywhere, as before. One on another computer (\\server\share\...)
+    /// only from the document's folder or the folders of the Files panel: reaching a server makes Windows send it the
+    /// user's credentials, and a document downloaded from the internet could name any server.</summary>
+    private bool PictureAllowed(string path, string? docPath)
+    {
+        if (!path.StartsWith(@"\\", StringComparison.Ordinal)) return true;
+        if (docPath != null && Path.GetDirectoryName(docPath) is { } dir && Wiki.Inside(path, dir)) return true;
+        return _roots.Any(r => Wiki.Inside(path, r)) || InReach(path, docPath);
+    }
+
     private void InitDocFiles(CoreWebView2 core)
     {
         core.AddWebResourceRequestedFilter(DocHost + "*", CoreWebView2WebResourceContext.All);
@@ -72,24 +82,29 @@ public partial class MainWindow
 
     private async void OnDocRequest(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
     {
-        if (sender is not CoreWebView2 core) return;
-        var env = core.Environment;
-        var path = DocPath(e.Request.Uri);
-        if (path == null || !(IsPicture(path) || InReach(path, TabOf(core)?.Path)))
-        {
-            e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", "");
-            return;
-        }
-        var deferral = e.GetDeferral();
         try
         {
-            var bytes = await Task.Run(() => File.Exists(path) ? File.ReadAllBytes(path) : null);   // a large picture: off the window's thread
-            if (bytes == null) { e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", ""); return; }
-            var type = Mime.TryGetValue(Path.GetExtension(path), out var t) ? t : "application/octet-stream";
-            e.Response = env.CreateWebResourceResponse(new MemoryStream(bytes), 200, "OK", $"Content-Type: {type}\r\nCache-Control: no-cache");
+            if (sender is not CoreWebView2 core) return;
+            var env = core.Environment;
+            var path = DocPath(e.Request.Uri);
+            var docPath = TabOf(core)?.Path;
+            if (path == null || !((IsPicture(path) && PictureAllowed(path, docPath)) || InReach(path, docPath)))
+            {
+                e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", "");
+                return;
+            }
+            var deferral = e.GetDeferral();
+            try
+            {
+                var bytes = await Task.Run(() => File.Exists(path) ? File.ReadAllBytes(path) : null);   // a large picture: off the window's thread
+                if (bytes == null) { e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", ""); return; }
+                var type = Mime.TryGetValue(Path.GetExtension(path), out var t) ? t : "application/octet-stream";
+                e.Response = env.CreateWebResourceResponse(new MemoryStream(bytes), 200, "OK", $"Content-Type: {type}\r\nCache-Control: no-cache");
+            }
+            catch { e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", ""); }
+            finally { deferral.Complete(); }
         }
-        catch { e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", ""); }
-        finally { deferral.Complete(); }
+        catch (Exception ex) { LogError("OnDocRequest", ex); }
     }
 
     /// <summary>A ![[name]] picture that did not load beside the document: the file of that name in the open folders.</summary>

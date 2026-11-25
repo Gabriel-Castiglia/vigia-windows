@@ -5,6 +5,7 @@
 
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -182,10 +183,19 @@ public sealed class Settings
     {
         MigrateFromGryphmark();
         if (Profile == null) MigrateFromQuillforge();
+        // the file, or the copy of the previous save when the file cannot be read (cut short, emptied by another
+        // program): before 3.2.1 a broken file silently gave the defaults, and a profile lost its folders and favourites
+        foreach (var f in new[] { FilePath, BackupPath })
+        {
+            try
+            {
+                if (File.Exists(f) && JsonSerializer.Deserialize<Settings>(File.ReadAllText(f)) is { } read) return read;
+            }
+            catch { /* try the next one */ }
+        }
         try
         {
-            if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath)) ?? new Settings();
+            if (File.Exists(FilePath)) return new Settings();   // both unreadable: start fresh
             if (Profile != null)   // new dedicated instance: the main preferences, an empty session
             {
                 var main = Path.Combine(BaseDir, "settings.json");
@@ -214,13 +224,19 @@ public sealed class Settings
                 var mine = JsonSerializer.SerializeToNode(this)!.AsObject();
                 foreach (var (k, v) in mine)
                     if (!SessionKeys.Contains(k)) disk[k] = v?.DeepClone();
-                File.WriteAllText(FilePath, disk.ToJsonString(Indented));
+                AtomicFile.WriteAllText(FilePath, disk.ToJsonString(Indented), new UTF8Encoding(false), BackupPath);
                 return;
             }
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this, Indented));
+            AtomicFile.WriteAllText(FilePath, JsonSerializer.Serialize(this, Indented), new UTF8Encoding(false), BackupPath);
         }
         catch { /* settings are a convenience */ }
     }
+
+    /// <summary>The previous save of settings.json, read when the file itself cannot be.</summary>
+    private static string BackupPath => FilePath + ".bak";
+
+    /// <summary>For the self-test (MainWindow.SelfTest.cs), which runs in a throw-away profile.</summary>
+    internal static string FilePathForTest => FilePath;
 
     public void AddRecentFolder(string dir)
     {
@@ -229,10 +245,14 @@ public sealed class Settings
         if (RecentFolders.Count > 6) RecentFolders.RemoveRange(6, RecentFolders.Count - 6);
     }
 
-    public void AddRecent(string path)
+    /// <summary>Puts a file first in File → Recent. False when it already was first: nothing to save then (autosave
+    /// writes often, and used to rewrite settings.json each time).</summary>
+    public bool AddRecent(string path)
     {
+        if (Recent.Count > 0 && string.Equals(Recent[0], path, StringComparison.OrdinalIgnoreCase)) return false;
         Recent.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
         Recent.Insert(0, path);
         if (Recent.Count > 12) Recent.RemoveRange(12, Recent.Count - 12);
+        return true;
     }
 }

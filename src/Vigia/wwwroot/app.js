@@ -232,6 +232,46 @@
     applySpell();
   }
 
+  // TOAST UI 3.2.2 opens a paragraph in a table cell when its FIRST child is inline, and closes it when its LAST
+  // child is: a cell that ends in inline HTML (| x <sub>L-02</sub> |) opens one and never closes it. The nodes of
+  // the conversion stay unbalanced, it returns the table body instead of the document, and the visual view comes
+  // out blank (with getMarkdown() empty: an edit there would have saved an almost empty file). Each cell now
+  // closes, on leaving, exactly what it opened on entering.
+  function fixTableCells(ed) {
+    const convs = ed && ed.convertor && ed.convertor.toWwConvertors;
+    const orig = convs && convs.tableCell;
+    if (typeof orig !== 'function' || orig.gmFixed) return;
+    const depth = new WeakMap();
+    const fixed = function (state, node, ctx, ...rest) {
+      if (!state || !Array.isArray(state.stack) || !node || node.ignored || !ctx) return orig.call(this, state, node, ctx, ...rest);
+      if (ctx.entering) { depth.set(node, state.stack.length); return orig.call(this, state, node, ctx, ...rest); }
+      const d = depth.get(node);
+      if (d === undefined) return orig.call(this, state, node, ctx, ...rest);
+      depth.delete(node);
+      while (state.stack.length > d) state.closeNode();
+    };
+    fixed.gmFixed = true;
+    convs.tableCell = fixed;
+  }
+
+  // Filling an editor with a file is a transaction like any other, so the undo history kept it: Ctrl+Z right after
+  // opening a file took the editor back to empty, the document was then modified, and autosave wrote a file of a
+  // single line break over it. After a file goes in (open, reload, rebuild) both editors start a new history: the
+  // history plugin takes a fresh state handed to it in a transaction's meta.
+  function clearHistory() {
+    if (!editor) return;
+    for (const m of [editor.mdEditor, editor.wwEditor]) {
+      try {
+        const v = m && m.view;
+        if (!v) continue;
+        const h = v.state.plugins.find((p) => typeof p.key === 'string' && p.key.indexOf('history$') === 0);
+        if (!h || !h.spec || !h.spec.state || !h.spec.key) continue;
+        const fresh = h.spec.state.init(h.spec, v.state);
+        v.dispatch(v.state.tr.setMeta(h.spec.key, { historyState: fresh }).setMeta('addToHistory', false));
+      } catch (e) { /* an editor without history: nothing to clear */ }
+    }
+  }
+
   function build(markdown) {
     const el = document.getElementById('editorHost');
     if (editor) { try { editor.destroy(); } catch (e) { } editor = null; }
@@ -247,7 +287,7 @@
         height: '100%',
         initialEditType: state.mode === 'source' ? 'markdown' : 'wysiwyg',
         previewStyle: 'vertical',
-        initialValue: markdown || '',
+        initialValue: '',   // the text goes in below, once the table cells are fixed (fixTableCells)
         language: { es: 'es-ES', ja: 'ja-JP' }[state.lang] || 'en-US',
         theme: state.theme === 'dark' ? 'dark' : 'light',
         usageStatistics: false,
@@ -265,6 +305,9 @@
           caretChange: () => foldFrontMatter(),
         },
       });
+      fixTableCells(editor);
+      if (markdown) editor.setMarkdown(markdown, false);
+      clearHistory();
       markGithubClass();
       applyLock();
       quietText = editor.getMarkdown();
@@ -847,6 +890,7 @@
       quietText = null;
       frontMatterFor(original);
       try { editor.setMarkdown(original, false); } catch (e) { editorFailed(e); }
+      clearHistory();   // undo must not bring back the text the other program replaced
       baseline = editorText();
       quietText = baseline;
       setTimeout(() => { suppressDirty = false; }, 50);

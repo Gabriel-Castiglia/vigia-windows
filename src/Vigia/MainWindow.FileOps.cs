@@ -174,15 +174,19 @@ public partial class MainWindow
 
     private async void RenameNode(string path)
     {
-        if (!CanEditNode(path)) return;
-        if (!File.Exists(path) && !Directory.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return; }
-        var old = Path.GetFileName(path);
-        var dlg = new InputDialog(this, Strings.Plain("Rename"), new[] { (Strings.Get("RenameName"), old) });
-        if (dlg.ShowDialog() != true) return;
-        var name = dlg.Values[0];
-        if (name.Length == 0 || name == old) return;
-        if (!ValidName(name)) { Flash(string.Format(Strings.Get("NameInvalid"), name)); return; }
-        await MovePath(path, Path.Combine(Path.GetDirectoryName(path)!, name), true);
+        try
+        {
+            if (!CanEditNode(path)) return;
+            if (!File.Exists(path) && !Directory.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return; }
+            var old = Path.GetFileName(path);
+            var dlg = new InputDialog(this, Strings.Plain("Rename"), new[] { (Strings.Get("RenameName"), old) });
+            if (dlg.ShowDialog() != true) return;
+            var name = dlg.Values[0];
+            if (name.Length == 0 || name == old) return;
+            if (!ValidName(name)) { Flash(string.Format(Strings.Get("NameInvalid"), name)); return; }
+            await MovePath(path, Path.Combine(Path.GetDirectoryName(path)!, name), true);
+        }
+        catch (Exception ex) { LogError("RenameNode", ex); }
     }
 
     private MenuItem RenameEntry(string path)
@@ -261,21 +265,25 @@ public partial class MainWindow
 
     private async void OnTreeDrop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(FavDragFormat))
+        try
         {
+            if (e.Data.GetDataPresent(FavDragFormat))
+            {
+                e.Handled = true;
+                var row = Ancestor<TreeViewItem>(e.OriginalSource as DependencyObject);
+                SetDropTarget(null);
+                if (IsFavRow(row) && row!.Tag is string target) MoveFavoriteTo((string)e.Data.GetData(FavDragFormat), target);
+                return;
+            }
+            if (!e.Data.GetDataPresent(DragFormat)) return;
             e.Handled = true;
-            var row = Ancestor<TreeViewItem>(e.OriginalSource as DependencyObject);
+            var src = (string)e.Data.GetData(DragFormat);
+            var dir = DropDir(e, out _);
             SetDropTarget(null);
-            if (IsFavRow(row) && row!.Tag is string target) MoveFavoriteTo((string)e.Data.GetData(FavDragFormat), target);
-            return;
+            if (!CanDrop(src, dir)) return;
+            await MovePath(src, Path.Combine(dir!, Path.GetFileName(src)), true);
         }
-        if (!e.Data.GetDataPresent(DragFormat)) return;
-        e.Handled = true;
-        var src = (string)e.Data.GetData(DragFormat);
-        var dir = DropDir(e, out _);
-        SetDropTarget(null);
-        if (!CanDrop(src, dir)) return;
-        await MovePath(src, Path.Combine(dir!, Path.GetFileName(src)), true);
+        catch (Exception ex) { LogError("OnTreeDrop", ex); }
     }
 
     private TreeViewItem? FindRow(string path)

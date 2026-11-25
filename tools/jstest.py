@@ -434,10 +434,57 @@ js = """
     out.tab_outline = sent.slice(mark).some(m => m && m.type === 'outline' && m.items.length === 2);
     window.chrome.webview.postMessage = keepPost;
 
+    // Ctrl+Z right after opening a file (and after a reload) must not empty the document nor mark it modified:
+    // 3.2.0 kept the filling in the undo history and autosave then wrote a single line break over the file
+    const UNDO_DOC = '# Kept\\n\\nSome words here.\\n\\n- one\\n- two\\n';
+    const undoSeen = {};
+    let undoDirty = 0;
+    window.chrome.webview.postMessage = (m) => { if (m && m.type === 'dirty') undoDirty++; };
+    for (const mode of ['visual', 'source']) {
+      mdApp.setMode(mode);
+      mdApp.load(UNDO_DOC, null);
+      await new Promise(r => setTimeout(r, 120));
+      undoDirty = 0;
+      undoKey(); undoKey();
+      await new Promise(r => setTimeout(r, 120));
+      undoSeen[mode] = { words: mdApp.words(), same: mdApp.getMarkdownPreserving() === UNDO_DOC, dirty: undoDirty };
+      await mdApp.reload(UNDO_DOC + '\\nAdded.\\n');
+      await new Promise(r => setTimeout(r, 120));
+      undoDirty = 0;
+      undoKey(); undoKey();
+      await new Promise(r => setTimeout(r, 120));
+      undoSeen[mode + '_reload'] = { added: mdApp.getMarkdownPreserving().includes('Added.'), dirty: undoDirty };
+    }
+    window.chrome.webview.postMessage = keepPost;
+    out.undo_after_load_keeps_text = ['visual', 'source'].every(m => undoSeen[m].words > 0 && undoSeen[m].same && undoSeen[m].dirty === 0);
+    out.undo_after_reload_keeps_text = ['visual', 'source'].every(m => undoSeen[m + '_reload'].added && undoSeen[m + '_reload'].dirty === 0);
+    if (!out.undo_after_load_keeps_text || !out.undo_after_reload_keeps_text) out.undo_seen = JSON.stringify(undoSeen);
+    // typing still undoes as usual
+    mdApp.setMode('visual'); mdApp.load(UNDO_DOC, null);
+    mdApp.focus(); mdApp.insertText('typed ');
+    const withTyped = mdApp.getMarkdown().includes('typed');
+    undoKey();
+    out.undo_still_undoes_typing = withTyped && !mdApp.getMarkdown().includes('typed') && mdApp.words() > 0;
+
+    // a table whose cells end in inline HTML, on two rows: TOAST UI 3.2.2 left the visual view blank
+    const SUBT = '| a | b |\\n|---|---|\\n| x <sub>L</sub> | y |\\n| z <sub>M</sub> | w |\\n\\nAfter the table.\\n';
+    mdApp.setMode('visual'); mdApp.load(SUBT, null);
+    await new Promise(r => setTimeout(r, 150));
+    const ww = Array.from(document.querySelectorAll('#editorHost .toastui-editor-ww-container .ProseMirror'))[0];
+    out.inline_html_table_visual = !!ww && ww.textContent.includes('After the table.') && ww.textContent.includes('z')
+      && mdApp.words() > 0 && mdApp.getMarkdownPreserving() === SUBT && /After the table/.test(mdApp.getMarkdown());
+    if (!out.inline_html_table_visual) out.inline_html_table_seen = JSON.stringify({ ww: ww && ww.textContent, md: mdApp.getMarkdown() });
+
     mdApp.setMode('visual');
   } catch (e) { out.err = String(e && e.stack || e); }
   document.getElementById('out').textContent = JSON.stringify(out);
 })();
+function undoKey() {
+  // Ctrl+Z as the keyboard sends it, on the editor shown (ProseMirror's own key handling, as for the user)
+  const v = mdApp._view(); if (!v) return;
+  v.focus();
+  v.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', keyCode: 90, ctrlKey: true, bubbles: true, cancelable: true }));
+}
 function toastView() {
   // the editor instance is private to app.js; reach the ProseMirror view through the DOM
   return mdApp._view();

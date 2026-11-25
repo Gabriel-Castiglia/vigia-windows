@@ -128,17 +128,25 @@ public partial class MainWindow : Window
     }
 
     private async Task<string> Js(string script) => await Web.CoreWebView2.ExecuteScriptAsync(script);
+
+    /// <summary>A script in a given tab's page, which may no longer be the one shown when the call returns.</summary>
+    private static async Task<string> JsIn(DocTab t, string script) =>
+        t.View?.CoreWebView2 is { } core ? await core.ExecuteScriptAsync(script) : "null";
     private static string Q(string s) => JsonSerializer.Serialize(s);
 
     /// <summary>A message from a page. Only the shown tab's page acts at once; a hidden one's message waits until
     /// its tab is shown (MainWindow.Tabs.cs ActivateAsync).</summary>
     private async void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        var tab = TabOf(sender);
-        if (tab == null) return;
-        string json = e.WebMessageAsJson;
-        if (tab != _cur) { if (json != "\"drop\"") tab.Held.Add(json); return; }
-        await HandleWebMessage(json, e);
+        try
+        {
+            var tab = TabOf(sender);
+            if (tab == null) return;
+            string json = e.WebMessageAsJson;
+            if (tab != _cur) { if (json != "\"drop\"") tab.Held.Add(json); return; }
+            await HandleWebMessage(json, e);
+        }
+        catch (Exception ex) { LogError("OnWebMessage", ex); }
     }
 
     private async Task HandleWebMessage(string json, CoreWebView2WebMessageReceivedEventArgs? e)
@@ -262,8 +270,9 @@ public partial class MainWindow : Window
 
     /// <summary>The file as text; remembers its BOM and line endings so a save writes them back.
     /// Shared read access: another program may still have it open for writing.</summary>
-    private string ReadDocument(string path)
+    private string ReadDocument(string path, DocTab? tab = null)
     {
+        var t = tab ?? _cur;   // the tab whose BOM and line endings are noted
         byte[] bytes;
         using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
         using (var ms = new MemoryStream())
@@ -271,9 +280,9 @@ public partial class MainWindow : Window
             fs.CopyTo(ms);
             bytes = ms.ToArray();
         }
-        _bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
-        string text = new UTF8Encoding(false).GetString(bytes, _bom ? 3 : 0, bytes.Length - (_bom ? 3 : 0));
-        _crlf = text.Contains("\r\n");
+        t.Bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
+        string text = new UTF8Encoding(false).GetString(bytes, t.Bom ? 3 : 0, bytes.Length - (t.Bom ? 3 : 0));
+        t.Crlf = text.Contains("\r\n");
         return text;
     }
 
@@ -309,7 +318,11 @@ public partial class MainWindow : Window
     /// instead of a dialog.</summary>
     private async Task<bool> SaveAsync(bool forceDialog, bool auto = false)
     {
-        var target = _path;
+        // Everything below works on the tab that was shown when the save started: a save that outlasted the wait of
+        // a tab switch used to finish on the tab shown by then, which took the path of the first file, and the next
+        // autosave wrote the second document over the first file.
+        var t = _cur;
+        var target = t.Path;
         if (forceDialog || target == null)
         {
             var dlg = new SaveFileDialog
@@ -321,27 +334,31 @@ public partial class MainWindow : Window
             };
             if (dlg.ShowDialog(this) != true) return false;
             target = dlg.FileName;
+            if (t != _cur || !_tabs.Contains(t)) return false;   // the tab changed while the dialog was open
         }
+        if (!t.Ready || t.View?.CoreWebView2 == null) return false;
         using var busy = DocBusy();
-        _saving = true;
+        _saving = true; t.Saving++;
         try
         {
             // untouched blocks keep their original Markdown; line endings and BOM as the file had them.
             // The text is taken and marked as saved in one call; seq is the last edit it holds.
-            using var snap = JsonDocument.Parse(await Js("mdApp.takeForSave()"));
+            using var snap = JsonDocument.Parse(await JsIn(t, "mdApp.takeForSave()"));
             var md = snap.RootElement.GetProperty("text").GetString() ?? "";
             long seq = snap.RootElement.GetProperty("seq").GetInt64();
-            var disk = _crlf ? md.Replace("\r\n", "\n").Replace("\n", "\r\n") : md;
-            File.WriteAllText(target!, disk, new UTF8Encoding(_bom));
-            _diskText = disk;   // the watcher sees this write; the same text on disk is not a change
-            bool moved = !string.Equals(target, _path, StringComparison.OrdinalIgnoreCase);
-            _path = target;
-            _dirty = _lastEditSeq > seq;   // typed while saving: still modified, and saved again shortly
-            if (_dirty) ScheduleAutoSave();
-            Watch(target!); ClearRecovery();
-            if (moved) await Js($"mdApp.setBase({DocBaseJs(target)})");
-            _settings.AddRecent(target!); _settings.Save();
-            BuildMenu(); UpdateTitle(); UpdateStatus();
+            var disk = t.Crlf ? md.Replace("\r\n", "\n").Replace("\n", "\r\n") : md;
+            AtomicFile.WriteAllText(target!, disk, new UTF8Encoding(t.Bom));
+            t.DiskText = disk;   // the watcher sees this write; the same text on disk is not a change
+            bool moved = !string.Equals(target, t.Path, StringComparison.OrdinalIgnoreCase);
+            t.Path = target;
+            t.Dirty = t.LastEditSeq > seq;   // typed while saving: still modified, and saved again shortly
+            if (t.Dirty && t == _cur) ScheduleAutoSave();
+            WatchTab(t, target!); ClearRecoveryOf(t);
+            if (moved) await JsIn(t, $"mdApp.setBase({DocBaseJs(target)})");
+            bool menu = moved;
+            if (_settings.AddRecent(target!)) { _settings.Save(); menu = true; }   // the same first file: nothing to write
+            if (t == _cur) { if (menu) BuildMenu(); UpdateTitle(); UpdateStatus(); }
+            else RefreshTabHeader(t);
             return true;
         }
         catch (Exception ex)
@@ -350,7 +367,7 @@ public partial class MainWindow : Window
             else MessageBox.Show(this, string.Format(Strings.Get("ErrSave"), ex.Message), "Vigía", MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
-        finally { _saving = false; }
+        finally { _saving = false; t.Saving--; }
     }
 
     private async Task<bool> ConfirmDiscardAsync()
@@ -424,7 +441,9 @@ public partial class MainWindow : Window
         _windowClosing = true;
         bool go = await ConfirmDiscardAllAsync();
         _windowClosing = false;
-        if (go) { _closingConfirmed = true; ClearAllRecovery(); StopFeatures(); Close(); }
+        // Close() again from inside this Closing handler throws ("cannot call Close while closing") and ended the
+        // program at once (8 crashes of Gryphmark 1.7-1.9 in the event log): asked for once this handler has returned
+        if (go) { _closingConfirmed = true; ClearAllRecovery(); StopFeatures(); _ = Dispatcher.BeginInvoke(Close); }
     }
 
     // ------------------------------------------------------------------ Sample document
@@ -651,23 +670,27 @@ public partial class MainWindow : Window
 
     private async void OnKey(object sender, KeyEventArgs e)
     {
-        // Shortcuts when the focus is on the menu or the window frame (the page handles its own)
-        if (Keyboard.Modifiers != ModifierKeys.Control && Keyboard.Modifiers != (ModifierKeys.Control | ModifierKeys.Shift)) return;
-        if (Web.IsKeyboardFocusWithin) return;
-        string? cmd = e.Key switch
+        try
         {
-            Key.Tab => Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? "prevtab" : "nexttab",
-            Key.PageDown => "nexttab", Key.PageUp => "prevtab",
-            Key.T when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "reopentab",
-            Key.N => "new", Key.O => "open", Key.P => "print", Key.W => "close",
-            Key.S => Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? "saveas" : "save",
-            Key.D1 => "mode1", Key.D2 => "mode2", Key.D3 => "mode3",
-            Key.E when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "files",
-            Key.F when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "search",
-            Key.L when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "readonly",
-            _ => null,
-        };
-        if (cmd != null) { e.Handled = true; await RunCommand(cmd); }
+            // Shortcuts when the focus is on the menu or the window frame (the page handles its own)
+            if (Keyboard.Modifiers != ModifierKeys.Control && Keyboard.Modifiers != (ModifierKeys.Control | ModifierKeys.Shift)) return;
+            if (Web.IsKeyboardFocusWithin) return;
+            string? cmd = e.Key switch
+            {
+                Key.Tab => Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? "prevtab" : "nexttab",
+                Key.PageDown => "nexttab", Key.PageUp => "prevtab",
+                Key.T when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "reopentab",
+                Key.N => "new", Key.O => "open", Key.P => "print", Key.W => "close",
+                Key.S => Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? "saveas" : "save",
+                Key.D1 => "mode1", Key.D2 => "mode2", Key.D3 => "mode3",
+                Key.E when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "files",
+                Key.F when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "search",
+                Key.L when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "readonly",
+                _ => null,
+            };
+            if (cmd != null) { e.Handled = true; await RunCommand(cmd); }
+        }
+        catch (Exception ex) { LogError("OnKey", ex); }
     }
 
     // ------------------------------------------------------------------ Menu
@@ -1121,12 +1144,13 @@ public partial class MainWindow : Window
     }
 
     // ------------------------------------------------------------------ Chrome
-    private void UpdateTitle()
+    /// <param name="reveal">false on a tab switch, which shows the file in the Files panel a moment later (AfterSwitch).</param>
+    private void UpdateTitle(bool reveal = true)
     {
         var name = _path != null ? Path.GetFileName(_path) : Strings.Get(_isSample ? "SampleTitle" : "Untitled");
         Title = $"{(_dirty ? "● " : "")}{name} — Vigía" + (Settings.Profile != null ? $"  [{Settings.Profile}]" : "");
         RefreshTabHeader(_cur);   // its tab: name and the dot of unsaved changes
-        RevealCurrent();          // the Files panel follows the open file
+        if (reveal) RevealCurrent();   // the Files panel follows the open file
     }
 
     private void UpdateStatus()

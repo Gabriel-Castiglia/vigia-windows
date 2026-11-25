@@ -65,13 +65,17 @@ public partial class MainWindow
     /// <summary>Shows the pane and puts the cursor in its box (with the selected words, if a few are selected).</summary>
     private async void ShowSearch()
     {
-        if (!_settings.SearchPanel) { _settings.SearchPanel = true; _settings.Save(); ApplySideLayout(); BuildMenu(); }
-        if (SearchBox.Text.Length == 0 && _ready)
+        try
         {
-            var sel = await SelectedTextAsync();
-            if (sel.Length is > 1 and < 120 && !sel.Contains('\n')) SearchBox.Text = sel;
+            if (!_settings.SearchPanel) { _settings.SearchPanel = true; _settings.Save(); ApplySideLayout(); BuildMenu(); }
+            if (SearchBox.Text.Length == 0 && _ready)
+            {
+                var sel = await SelectedTextAsync();
+                if (sel.Length is > 1 and < 120 && !sel.Contains('\n')) SearchBox.Text = sel;
+            }
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Input, () => { SearchBox.Focus(); SearchBox.SelectAll(); });
         }
-        _ = Dispatcher.BeginInvoke(DispatcherPriority.Input, () => { SearchBox.Focus(); SearchBox.SelectAll(); });
+        catch (Exception ex) { LogError("ShowSearch", ex); }
     }
 
     /// <summary>The Markdown files under a folder, as the trees list them: hidden, system and tool folders left out.</summary>
@@ -138,20 +142,24 @@ public partial class MainWindow
 
     private async void RunSearch()
     {
-        _searchCts?.Cancel();
-        var q = SearchBox.Text;
-        SearchTree.Items.Clear();
-        if (q.Trim().Length < 2) { SearchStatus.Text = Strings.Get(_roots.Count == 0 ? "SearchNoFolder" : "SearchHint"); return; }
-        var roots = _roots.Where(r => !_missing.Contains(r)).ToList();
-        if (roots.Count == 0) { SearchStatus.Text = Strings.Get("SearchNoFolder"); return; }
-        var cts = _searchCts = new CancellationTokenSource();
-        bool cs = SearchCase.IsChecked == true;
-        SearchStatus.Text = Strings.Get("Searching");
-        List<SearchFile> found; bool cut = false;
-        try { found = await Task.Run(() => SearchFolders(roots, q, cs, cts.Token, out cut), cts.Token); }
-        catch (OperationCanceledException) { return; }
-        if (cts.IsCancellationRequested) return;
-        ShowResults(found, q, cs, cut);
+        try
+        {
+            _searchCts?.Cancel();
+            var q = SearchBox.Text;
+            SearchTree.Items.Clear();
+            if (q.Trim().Length < 2) { SearchStatus.Text = Strings.Get(_roots.Count == 0 ? "SearchNoFolder" : "SearchHint"); return; }
+            var roots = _roots.Where(r => !_missing.Contains(r)).ToList();
+            if (roots.Count == 0) { SearchStatus.Text = Strings.Get("SearchNoFolder"); return; }
+            var cts = _searchCts = new CancellationTokenSource();
+            bool cs = SearchCase.IsChecked == true;
+            SearchStatus.Text = Strings.Get("Searching");
+            List<SearchFile> found; bool cut = false;
+            try { found = await Task.Run(() => SearchFolders(roots, q, cs, cts.Token, out cut), cts.Token); }
+            catch (OperationCanceledException) { return; }
+            if (cts.IsCancellationRequested) return;
+            ShowResults(found, q, cs, cut);
+        }
+        catch (Exception ex) { LogError("RunSearch", ex); }
     }
 
     private void ShowResults(List<SearchFile> found, string q, bool matchCase, bool cut)
@@ -217,11 +225,15 @@ public partial class MainWindow
 
     private async void ActivateSearchItem(TreeViewItem item)
     {
-        switch (item.Tag)
+        try
         {
-            case SearchFile f: await OpenAtMatch(f.Path, SearchBox.Text, SearchCase.IsChecked == true, 0, f.Hits.FirstOrDefault()?.Text, f.Hits.Count); break;
-            case ValueTuple<string, SearchHit, string, bool, int> t: await OpenAtMatch(t.Item1, t.Item3, t.Item4, t.Item2.Occurrence, t.Item2.Text, t.Item5); break;
+            switch (item.Tag)
+            {
+                case SearchFile f: await OpenAtMatch(f.Path, SearchBox.Text, SearchCase.IsChecked == true, 0, f.Hits.FirstOrDefault()?.Text, f.Hits.Count); break;
+                case ValueTuple<string, SearchHit, string, bool, int> t: await OpenAtMatch(t.Item1, t.Item3, t.Item4, t.Item2.Occurrence, t.Item2.Text, t.Item5); break;
+            }
         }
+        catch (Exception ex) { LogError("ActivateSearchItem", ex); }
     }
 
     /// <summary>Shows the file (its tab, or a new one) and goes to its n-th match, with the find bar showing the
