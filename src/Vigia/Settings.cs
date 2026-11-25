@@ -73,8 +73,10 @@ public sealed class Settings
     public bool Outline { get; set; } = true;
     public bool Spell { get; set; } = true;
     /// <summary>Spell check languages, all checked at once (a word is right when any of them knows it): "en", "es",
-    /// "ja" (Japanese text is never marked) and any dictionary added by the user (SpellChecker.cs).</summary>
-    public List<string> SpellLangs { get; set; } = new() { "en", "es", "ja" };
+    /// "es-UY", "ja" (Japanese text is never marked) and any dictionary added by the user (SpellChecker.cs).</summary>
+    public List<string> SpellLangs { get; set; } = new() { "en", "es", "es-UY", "ja" };
+    /// <summary>3.3.1 added the Spanish of Uruguay (es-UY, "tenés", "mirá"); set once it was added to a list saved by 3.3.0.</summary>
+    public bool SpellRioplatense { get; set; }
     /// <summary>Words added to the dictionary with the right-click menu (this profile only).</summary>
     public List<string> SpellWords { get; set; } = new();
     public bool AutoSave { get; set; } = true;   // saves a moment after the typing stops (MainWindow.AutoSave)
@@ -197,7 +199,7 @@ public sealed class Settings
         {
             try
             {
-                if (File.Exists(f) && JsonSerializer.Deserialize<Settings>(File.ReadAllText(f)) is { } read) return read;
+                if (File.Exists(f) && JsonSerializer.Deserialize<Settings>(File.ReadAllText(f)) is { } read) return read.Upgraded();
             }
             catch { /* try the next one */ }
         }
@@ -238,6 +240,19 @@ public sealed class Settings
             AtomicFile.WriteAllText(FilePath, JsonSerializer.Serialize(this, Indented), new UTF8Encoding(false), BackupPath);
         }
         catch { /* settings are a convenience */ }
+    }
+
+    /// <summary>Settings saved by an older version, brought up to this one: the Spanish of Uruguay joins a list of spell
+    /// check languages that has Spanish (once: taken out by hand, it stays out).</summary>
+    private Settings Upgraded()
+    {
+        if (!SpellRioplatense)
+        {
+            SpellRioplatense = true;
+            int es = SpellLangs.IndexOf("es");
+            if (es >= 0 && !SpellLangs.Contains("es-UY")) SpellLangs.Insert(es + 1, "es-UY");
+        }
+        return this;
     }
 
     /// <summary>The previous save of settings.json, read when the file itself cannot be.</summary>

@@ -326,10 +326,12 @@
     return out;
   }
   function spellAsk(words) {
-    const want = words.filter((w) => !spell.bad.has(w) && !spell.asked.has(w));
+    // at most 5000 words per message; only those are marked as asked, so the rest go in the next one (the host's
+    // answer redraws, and the redraw asks for what is still unknown)
+    const want = words.filter((w) => !spell.bad.has(w) && !spell.asked.has(w)).slice(0, 5000);
     if (!want.length) return;
     want.forEach((w) => spell.asked.add(w));
-    post({ type: 'spell', words: want.slice(0, 5000) });
+    post({ type: 'spell', words: want });
   }
   function spellDecorations(ctx, doc, md) {
     if (!state.spell) return ctx.pmView.DecorationSet.empty;
@@ -367,6 +369,7 @@
     const el = e.target && e.target.closest && e.target.closest('.gm-misspelled');
     if (!el || state.locked || state.mode === 'preview') return;
     e.preventDefault();
+    spell.menu = null;   // never the word of an earlier right click
     for (const v of spell.views) {
       if (!v.dom.contains(el)) continue;
       try {

@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.3.1 — 2026-11-25
+
+- **Spanish of Uruguay** in the spell check (`es-UY`, with the voseo: *tenés*, *querés*, *mirá*), on by default next
+  to the general Spanish; a list of languages saved by 3.3.0 gets it once (taken out by hand, it stays out). The
+  general Spanish dictionary marked every verb of the voseo in red.
+- **Newer dictionaries**: Spanish goes from RLA-ES 2.8 to 2.9 (more words, *Montevideo* among them), and English
+  takes LibreOffice's fix of January 2024, so *don’t* and *it’s* written with the typographic apostrophe are right.
+  A dictionary added by hand that does not list that apostrophe also accepts those words now.
+- **Updates signed with either of the author's two keys** (the PC's or the Mac's): every Windows app of the author
+  now checks the same `release.sig` (`ReleaseSignature.cs`). A Vigía 3.3.0 knows only the first key, so it offers
+  the page of this release instead of installing it: install 3.3.1 by hand once.
+- *Add a language…* reads the dictionary before copying it: one that cannot be read no longer stays in the list as a
+  missing language, nor replaces a good dictionary of the same name.
+- A document with more than 5000 different unknown words left the ones past 5000 unchecked until it was opened
+  again; they are asked for in the next message now. A right click on a marked word could offer the suggestions
+  of the word clicked before.
+- `SHA256SUMS.txt` of the release lists the manuals again (3.3.0 listed only the installer).
+- Newer libraries: DOMPurify 3.4.17 → 3.5.0 (it cleans what the GitHub view shows), TOAST UI Editor 3.2.2 → 3.2.3,
+  highlight.js 11.11.1 → 11.12.0, marked-footnote 1.2.4 → 1.4.0, github-markdown-css 5.8.1 → 5.9.0, esbuild 0.25.5 →
+  0.25.12, WebView2 SDK 1.0.4314.35 → 1.0.4370.26.
+
 ## 3.3.0 — 2026-11-25
 
 - **Spell check in several languages at once**, on by default with English, Spanish and Japanese: a word is right

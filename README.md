@@ -36,7 +36,7 @@ follows tools that save by writing a new file and renaming it over the old one.
 - **Themes**: light, dark or automatic (follows Windows), and a colour catalogue that changes the icon everywhere in Windows and the highlights of the app (*View → Theme…*); sky blue by default
 - **Dedicated instances**: open a file or folder in its own Vigía, separate from the main window (`--profile "Name"`, or right-click in the Files panel → desktop shortcut)
 - **Zoom bar** in the status bar (also `Ctrl` + mouse wheel); on a narrow window the buttons that do not fit go into a ⋯ menu
-- Find & replace; spell check in English, Spanish and Japanese at once (mixed-language text), with suggestions, *Ignore* and *Add to dictionary*; a sidebar with the files above and the outline below, as on the Mac (drag its edge and the line between them)
+- Find & replace; spell check in English, Spanish (also the Spanish of Uruguay, with the voseo) and Japanese at once (mixed-language text), with suggestions, *Ignore* and *Add to dictionary*; a sidebar with the files above and the outline below, as on the Mac (drag its edge and the line between them)
 - **Layouts**: the files and the outline go on either side of the text, one above the other or side by side; pick one from the drawings behind the layout button of the toolbar (or *View → Layout*), or drag a pane by its title to an edge of the window. *View → Text width* widens the column up to the whole window
 - **Favourites**: a star on each file or folder row puts it in one list for all the open folders, at the top of the Files panel (drag to reorder); an optional RECENT block below it
 - **Search in the folders** (`Ctrl+Shift+F`): every Markdown file of the open folders, results by file and line, a click opens the file at the match; a pane you place like the others
@@ -176,22 +176,23 @@ Markdown のタグは Vigía が書きます。文書は GitHub とまったく�
 
 ## Build tools / Herramientas de compilación
 
-Vigía 3.2.1 was built and tested with / se compiló y probó con:
+Vigía 3.3.1 was built and tested with / se compiló y probó con:
 
 | Tool | Version |
 |---|---|
 | Windows 11 Pro | x64 |
-| .NET SDK / runtime (self-contained, net10.0-windows) | 11.0.100 / 10.0.15 |
-| Microsoft.Web.WebView2 (NuGet) | 1.0.4314.35 |
+| .NET SDK / runtime (self-contained, net10.0-windows) | 10.0.404 / 10.0.15 |
+| Microsoft.Web.WebView2 (NuGet) | 1.0.4370.26 |
+| WeCantSpell.Hunspell (NuGet) | 7.0.1 |
 | Node.js / npm (web bundle) | 26.12.1 / 11.20.0 |
-| esbuild | 0.25.5 |
+| esbuild | 0.25.12 |
 | Inno Setup | 6.7.3 |
-| Microsoft Edge (manual PDFs) | 158.0.4370.33 |
-| Python (`-Art` only; not used for 3.2.1, the art did not change) | 3.13.17, Pillow 12.3.0, numpy 2.5.4, scipy 1.18.1, opencv-python 5.0.0 |
+| Google Chrome (manual PDFs) | 158.0.8127.89 |
+| Python (`-Art` only; not used for 3.3.1, the art did not change) | 3.13.17, Pillow 12.3.0, numpy 2.5.4, scipy 1.18.1, opencv-python 5.0.0 |
 
-Web libraries / Bibliotecas web (exact versions in `_npm/package-lock.json`): TOAST UI Editor 3.2.2,
-marked 15.0.12, KaTeX 0.19.1, Mermaid 12.3.0, highlight.js 11.11.1, jsdiff 9.0.0, DOMPurify 3.4.17,
-github-markdown-css 5.8.1, gemoji 8.1.0.
+Web libraries / Bibliotecas web (exact versions in `_npm/package-lock.json`): TOAST UI Editor 3.2.3,
+marked 15.0.12, KaTeX 0.19.1, Mermaid 12.3.0, highlight.js 11.12.0, jsdiff 9.0.0, DOMPurify 3.5.0,
+github-markdown-css 5.9.0, gemoji 8.1.0.
 
 ## License / Licencia
 
@@ -213,5 +214,8 @@ está en [`LICENSE`](LICENSE).
 | highlight.js, jsdiff | BSD-3-Clause |
 | DOMPurify | MPL-2.0 (used under the MPL-2.0 option of its MPL-2.0 / Apache-2.0 dual licence) |
 | .NET 10 / WPF | MIT |
+| WeCantSpell.Hunspell (spell check) | MIT |
+| English dictionary (`dict/en.*`, SCOWL / Hunspell en_US 2020.12.07 with LibreOffice's 2024 apostrophe fix) | MIT-like / BSD, see `dict/LICENSE-en.txt` |
+| Spanish dictionaries (`dict/es.*`, `dict/es-UY.*`, RLA-ES 2.9) | GPL-3.0+ / LGPL-3.0+ / MPL-1.1+, see `dict/LICENSE-es.txt` |
 | Microsoft Edge WebView2 SDK | Microsoft WebView2 SDK license (redistributable); the WebView2 Runtime is a Windows system component |
 | Icon / ícono: lighthouse from Debenne's design for a lighthouse (c. 1815), The Metropolitan Museum of Art | CC0 |

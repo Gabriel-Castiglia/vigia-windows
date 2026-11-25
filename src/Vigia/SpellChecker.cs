@@ -12,7 +12,7 @@ namespace Vigia;
 /// <summary>One checker for every tab. A word is right when any chosen language knows it, so a text that mixes
 /// languages is checked as a whole. The browser's own checker (the Windows spell checker in WebView2) keeps a single
 /// dictionary per browser and has no ignore list, so the pages ask this one instead.
-/// Bundled dictionaries are in dict/ next to the program (en, es); more can be added by the user as a Hunspell pair
+/// Bundled dictionaries are in dict/ next to the program (en, es, es-UY: the Spanish of Uruguay, with the voseo); more can be added by the user as a Hunspell pair
 /// (name.aff + name.dic) in the settings folder's "dictionaries" folder. Japanese has no spelling dictionary: words in
 /// Japanese script are never marked.</summary>
 internal static class SpellChecker
@@ -27,7 +27,7 @@ internal static class SpellChecker
     /// <summary>Every language that can be chosen: the bundled ones, Japanese, and the user's dictionaries.</summary>
     public static List<string> Available()
     {
-        var l = new List<string> { "en", "es", "ja" };
+        var l = new List<string> { "en", "es", "es-UY", "ja" };
         try
         {
             if (Directory.Exists(UserDir))
@@ -82,6 +82,9 @@ internal static class SpellChecker
             if (wl == null) continue;
             any = true;
             if (wl.Check(word)) return true;
+            // "don’t": a dictionary that does not list the typographic apostrophe among its letters knows the word
+            // only with the straight one (the user's Hunspell dictionaries, and en.aff before LibreOffice's 2024 fix)
+            if (word.Contains('’') && wl.Check(word.Replace('’', '\''))) return true;
         }
         return !any;   // no dictionary at all: nothing is marked
     }
@@ -105,12 +108,14 @@ internal static class SpellChecker
     {
         var aff = Path.ChangeExtension(dicPath, ".aff");
         if (!File.Exists(aff)) throw new FileNotFoundException(aff);
+        // read before it is copied: a pair that cannot be read never reaches the folder (it stayed there before, listed
+        // as a language that is missing, and replaced a good dictionary of the same name)
+        WordList.CreateFromFiles(dicPath, aff);   // throws if it cannot be read
         Directory.CreateDirectory(UserDir);
         var name = Path.GetFileNameWithoutExtension(dicPath);
         File.Copy(dicPath, Path.Combine(UserDir, name + ".dic"), true);
         File.Copy(aff, Path.Combine(UserDir, name + ".aff"), true);
         Lists.TryRemove(name, out _);
-        WordList.CreateFromFiles(Path.Combine(UserDir, name + ".dic"), Path.Combine(UserDir, name + ".aff"));   // throws if it cannot be read
         return name;
     }
 }

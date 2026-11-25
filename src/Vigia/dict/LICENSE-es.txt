@@ -5,11 +5,11 @@
   **                                                                        **
   ****************************************************************************
 
-Para: es_ES
+Para: es_ES (es.dic, es.aff) y es_UY (es-UY.dic, es-UY.aff)
 
   ****************************************************************************
 
-                                  Versión 2.8
+                                  Versión 2.9
 
 SUMARIO
 
@@ -31,7 +31,7 @@ formato de MySpell por Richard Holt.
 2. LICENCIA
 
    Este diccionario para corrección ortográfica, integrado por el fichero
-de afijos y la lista de palabras (es_ES[.aff|.dic]) se distribuye
+de afijos y la lista de palabras (es_ES y es_UY, es[.aff|.dic] y es-UY[.aff|.dic]) se distribuye
 bajo un triple esquema de licencias disjuntas: GNU GPL versión 3 o posterior,
 GNU LGPL versión 3 o posterior, ó MPL versión 1.1 o posterior. Puede
 seleccionar libremente bajo cuál de estas licencias utilizará este diccionario.

@@ -51,7 +51,7 @@ internal static class AtomicFile
         }
         finally
         {
-            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* left behind: harmless, hidden by its leading dot */ }
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* left behind: harmless, and the Files panel lists only Markdown files */ }
         }
     }
 

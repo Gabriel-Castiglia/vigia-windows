@@ -181,14 +181,19 @@ public partial class MainWindow
             Check("updates: newer versions and checksums", IsNewer("v2.1.0", "2.0.9") && !IsNewer("2.0.0", "2.0.0") && !IsNewer("x", "1.0.0")
                   && HashFor(sums, "Vigia-Setup-9.9.9.exe") == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
                   && HashFor(sums, "Vigia_Manual_EN.pdf")?.StartsWith("ffff") == true && HashFor(sums, "other.exe") == null, "");
-            // release.sig: a real signature by the author's key over exactly those bytes; any change is refused
+            // release.sig: real signatures by the author's two keys (the PC's, the Mac's) over exactly those bytes; any
+            // change is refused, and a signature by one key does not pass for the other
             var sumsBytes = System.Text.Encoding.UTF8.GetBytes(sums);
             const string goodSig = "rEEKYRSXLO7VKbID/El7ZkFBh1uKIPNS38KopNSZ6DEm7knfIUjxch9kmv8xfREc6bLKka+bePFZ1BKzO+15ww==";
+            const string macSig = "K8+3h6FgPjn2ZyH3HsLWof4obfKfyW00p3YKE9WQFoEF+umfN6/OMxMQNrQbc3XqkKrZSz3QexCBIZEMrdrvKg==";
             var badSig = goodSig[..10] + (goodSig[10] == 'A' ? 'B' : 'A') + goodSig[11..];
             var altered = System.Text.Encoding.UTF8.GetBytes(sums.Replace("0123", "0124"));
-            Check("updates: release signature", SignatureValid(sumsBytes, goodSig + "\n", ReleaseKey) && !SignatureValid(altered, goodSig, ReleaseKey)
-                  && !SignatureValid(sumsBytes, badSig, ReleaseKey) && !SignatureValid(sumsBytes, "", ReleaseKey)
-                  && !SignatureValid(sumsBytes, null, ReleaseKey) && !SignatureValid(sumsBytes, "not base64!", ReleaseKey), "");
+            var pcKey = Convert.FromBase64String(ReleaseSignature.Keys[0]);
+            Check("updates: release signature", ReleaseSignature.Valid(sumsBytes, goodSig + "\n") && ReleaseSignature.Valid(sumsBytes, macSig)
+                  && !ReleaseSignature.Valid(altered, goodSig) && !ReleaseSignature.Valid(altered, macSig)
+                  && !ReleaseSignature.Valid(sumsBytes, macSig, pcKey) && ReleaseSignature.Valid(sumsBytes, goodSig, pcKey)
+                  && !ReleaseSignature.Valid(sumsBytes, badSig) && !ReleaseSignature.Valid(sumsBytes, "")
+                  && !ReleaseSignature.Valid(sumsBytes, null) && !ReleaseSignature.Valid(sumsBytes, "not base64!"), "");
 
             // file operations of the tree: rename, drop into a folder, undo and redo; the open document follows
             var ops = Path.Combine(tmp, "ops"); var sub = Path.Combine(ops, "sub");
@@ -373,6 +378,15 @@ public partial class MainWindow
             var bad = SpellChecker.Misspelled(new[] { "hello", "mundo", "canción", "xqzwrt", "日本語" }, langs3, new HashSet<string>());
             Check("spell: several languages at once, Japanese never marked", bad.Count == 1 && bad[0] == "xqzwrt", string.Join(",", bad));
             Check("spell: suggestions", SpellChecker.Suggest("helo", langs3).Contains("hello"), string.Join(",", SpellChecker.Suggest("helo", langs3)));
+            // every bundled dictionary loads (a newer .aff that the Hunspell port could not read would leave its language
+            // silently unchecked), and the Spanish of Uruguay knows the voseo that the general one marks
+            var notLoaded = new[] { "en", "es", "es-UY" }.Where(SpellChecker.Missing).ToList();
+            Check("spell: every bundled dictionary loads", notLoaded.Count == 0, string.Join(",", notLoaded));
+            var voseo = new[] { "tenés", "querés", "mirá", "Montevideo" };
+            var badEs = SpellChecker.Misspelled(voseo, new[] { "es" }, new HashSet<string>());
+            var badUy = SpellChecker.Misspelled(voseo, new[] { "es-UY" }, new HashSet<string>());
+            Check("spell: es-UY knows the voseo", badUy.Count == 0 && badEs.Contains("tenés"), $"es: {string.Join(",", badEs)} es-UY: {string.Join(",", badUy)}");
+            Check("spell: the typographic apostrophe", SpellChecker.Misspelled(new[] { "don’t", "it’s", "don't" }, new[] { "en" }, new HashSet<string>()).Count == 0, "");
             var spf = Path.Combine(tabsDir, "spell.md"); File.WriteAllText(spf, "# Spell\n\nhello mundo xqzwrt vbnmqp\n");
             bool wasSpell = _settings.Spell; var wasLangs = _settings.SpellLangs.ToList();
             _settings.SpellLangs = langs3.ToList();

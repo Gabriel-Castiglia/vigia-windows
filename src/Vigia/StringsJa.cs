@@ -283,6 +283,7 @@ public static partial class Strings
         ["SpellLangsHint"] = "同時にチェックする言語 (どれか 1 つが知っている単語は正しいとみなすので、複数の言語が混ざった文章もまとめてチェックできます):",
         ["SpellLangen"] = "英語",
         ["SpellLanges"] = "スペイン語",
+        ["SpellLanges-UY"] = "ウルグアイのスペイン語 (voseo: tenés, mirá)",
         ["SpellLangja"] = "日本語 (マークされません: 日本語のスペル辞書はありません)",
         ["SpellAddLang"] = "言語を追加…",
         ["SpellAddLangFilter"] = "Hunspell 辞書 (*.dic、同じ場所に .aff が必要)|*.dic",

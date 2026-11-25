@@ -296,6 +296,7 @@ public static partial class Strings
         ["SpellLangsHint"] = ("Languages checked at once (a word is right when any of them knows it, so a text that mixes languages is checked as a whole):", "Idiomas que se revisan a la vez (una palabra está bien si alguno la conoce, así un texto que mezcla idiomas se revisa entero):"),
         ["SpellLangen"] = ("English", "Inglés"),
         ["SpellLanges"] = ("Spanish", "Español"),
+        ["SpellLanges-UY"] = ("Spanish of Uruguay (with the voseo: tenés, mirá)", "Español del Uruguay (con el voseo: tenés, mirá)"),
         ["SpellLangja"] = ("Japanese (never marked: there is no Japanese spelling dictionary)", "Japonés (nunca se marca: no hay diccionario ortográfico de japonés)"),
         ["SpellAddLang"] = ("Add a language…", "Agregar un idioma…"),
         ["SpellAddLangFilter"] = ("Hunspell dictionary (*.dic, with its .aff next to it)|*.dic", "Diccionario Hunspell (*.dic, con su .aff al lado)|*.dic"),

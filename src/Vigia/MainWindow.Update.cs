@@ -14,7 +14,7 @@ namespace Vigia;
 
 /// <summary>Help → Check for updates (and once a day by itself): when GitHub has a newer release, one question,
 /// and then everything happens alone. The release's SHA256SUMS.txt must carry a valid signature (release.sig, 3.3.0
-/// on: ECDSA P-256 by the author's key, below); the installer is downloaded and checked against that list (a release
+/// on: ECDSA P-256 by one of the author's keys, ReleaseSignature.cs); the installer is downloaded and checked against that list (a release
 /// without a valid signature, or a file that does not match, is thrown away, never run); every other Vigia window is asked to close (each one
 /// saves or asks as when it is closed by hand) and notes how to come back; the installer runs in silence keeping the
 /// install options, waits for this window to be gone, and reopens every window that was open, each with its
@@ -65,29 +65,6 @@ public partial class MainWindow
         try { Directory.CreateDirectory(Settings.BaseDir); File.WriteAllText(CheckStamp, DateTime.UtcNow.ToString("o")); } catch { }
     }
 
-    /// <summary>The public key release.sig is checked with (X||Y of a P-256 point, 64 bytes). The same key signs every
-    /// release of the author's apps; the private half never leaves the author's PC.</summary>
-    internal static readonly byte[] ReleaseKey = Convert.FromBase64String("A6RpVoY34Wts4tIWkpmbD8BsdZrjb8GXnlS79HO90GfcAPr+dCWy96twq4qxdU8uWPDcJmgyp1UJIc2hLUbEiw==");
-
-    /// <summary>true if <paramref name="signature"/> (base64 of an IEEE P1363 r||s, 64 bytes) is a valid ECDSA P-256 /
-    /// SHA-256 signature of exactly <paramref name="data"/>.</summary>
-    internal static bool SignatureValid(byte[] data, string? signature, byte[] publicKey)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(signature) || publicKey.Length != 64) return false;
-            var sig = Convert.FromBase64String(signature.Trim());
-            if (sig.Length != 64) return false;
-            using var ecdsa = ECDsa.Create(new ECParameters
-            {
-                Curve = ECCurve.NamedCurves.nistP256,
-                Q = new ECPoint { X = publicKey[..32], Y = publicKey[32..] },
-            });
-            return ecdsa.VerifyData(data, sig, HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
-        }
-        catch { return false; }
-    }
-
     internal static bool IsNewer(string tag, string mine) =>
         System.Version.TryParse(tag.TrimStart('v', 'V'), out var a) && System.Version.TryParse(mine, out var b) && a > b;
 
@@ -133,7 +110,7 @@ public partial class MainWindow
                     && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_') && url?.StartsWith("https://", StringComparison.Ordinal) == true)
                 { setupUrl = url; setupName = name; }
                 else if (name.Equals("SHA256SUMS.txt", StringComparison.OrdinalIgnoreCase)) sumsUrl = url;
-                else if (name.Equals("release.sig", StringComparison.OrdinalIgnoreCase)) sigUrl = url;
+                else if (name.Equals(ReleaseSignature.AssetName, StringComparison.OrdinalIgnoreCase)) sigUrl = url;
             }
             if (setupUrl == null || setupName == null || sumsUrl == null || sigUrl == null)
             {
@@ -175,7 +152,7 @@ public partial class MainWindow
                 // the signature first: without a valid one nothing is downloaded or run
                 var signature = await http.GetStringAsync(sigUrl);
                 var sums = await http.GetByteArrayAsync(sumsUrl);
-                if (!SignatureValid(sums, signature, ReleaseKey)) throw new InvalidOperationException(Strings.Get("UpdateBadSignature"));
+                if (!ReleaseSignature.Valid(sums, signature)) throw new InvalidOperationException(Strings.Get("UpdateBadSignature"));
                 var expected = HashFor(System.Text.Encoding.UTF8.GetString(sums), setupName)
                                ?? throw new InvalidOperationException(Strings.Get("UpdateNoHash"));
                 using (var resp = await http.GetAsync(setupUrl, HttpCompletionOption.ResponseHeadersRead))
