@@ -38,8 +38,8 @@ public sealed class Settings
     public Dictionary<string, string> FolderColorMap { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> RecentFolders { get; set; } = new();
     public bool FilesPanel { get; set; } = true;   // open by default, as the sidebar of the macOS version
-    public double FilesWidth { get; set; } = 260;       // width of the sidebar (Files over Contents), 180 to 700
-    public double OutlineShare { get; set; } = 0.45;    // part of the sidebar's height for Contents when both show
+    public double FilesWidth { get; set; } = 260;       // 2.1: width of the sidebar (Files over Contents), 180 to 700
+    public double OutlineShare { get; set; } = 0.45;    // 2.1: part of the sidebar's height for Contents (2.2: PaneWeights)
     public bool TreeLocked { get; set; } = true;        // unlocked: files and folders can be dragged in the tree (moved on disk)
     public int TextWidth { get; set; } = 980;           // text column in px (980 = GitHub's); 0 = the whole window
     /// <summary>2.0: stacked | columns | right. From 2.1 the layout is the four values below; an old value is
@@ -59,9 +59,8 @@ public sealed class Settings
     /// <summary>Width of a sidebar per layout (2.2): key = side and the panes on it with their arrangement.</summary>
     public Dictionary<string, double> LayoutWidths { get; set; } = new();
     public bool RecentPanel { get; set; }               // a RECENT block in the Files panel (off by default)
-    public double SideWidthColumns { get; set; } = 520; // sidebar width when Files and Contents sit side by side
-    public double OutlineShareColumns { get; set; } = 0.45; // part of that width for Contents
-    public double OutlineWidthRight { get; set; } = 260; // width of the right sidebar with one pane
+    public double SideWidthColumns { get; set; } = 520; // 2.1: sidebar width when Files and Contents sit side by side
+    public double OutlineWidthRight { get; set; } = 260; // 2.1: width of the right sidebar with one pane
     /// <summary>Favourite files: one list for all the open folders, shown above the trees (MainWindow.Favorites.cs).</summary>
     public List<string> FavoriteFiles { get; set; } = new();
     public double Width { get; set; } = 1200;
@@ -79,7 +78,7 @@ public sealed class Settings
     public bool SpellRioplatense { get; set; }
     /// <summary>Words added to the dictionary with the right-click menu (this profile only).</summary>
     public List<string> SpellWords { get; set; } = new();
-    public bool AutoSave { get; set; } = true;   // saves a moment after the typing stops (MainWindow.AutoSave)
+    public bool AutoSave { get; set; } = true;   // saves a moment after the typing stops (MainWindow.Features.cs)
     /// <summary>File → Reopen tabs at start: closing the window keeps the files of its tabs and the next start opens
     /// them again (off by default: closing the window closes every tab). MainWindow.Tabs.cs.</summary>
     public bool RestoreTabs { get; set; }
@@ -94,7 +93,6 @@ public sealed class Settings
     public bool SampleShown { get; set; }
     /// <summary>The user hid the sample from File → Open recent (Help → Sample document still opens it).</summary>
     public bool SampleHidden { get; set; }
-    public DateTime LastUpdateCheck { get; set; }
 
     // ------------------------------------------------------------------ instances
     // Main instance: %APPDATA%\Vigia. A dedicated instance (--profile "Name") has its own folder under

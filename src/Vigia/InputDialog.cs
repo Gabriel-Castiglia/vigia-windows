@@ -5,9 +5,7 @@
 
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 
 namespace Vigia;
 
@@ -19,14 +17,7 @@ public sealed class InputDialog : Window
 
     public InputDialog(Window owner, string title, (string Label, string Value)[] fields, Func<InputDialog, int, Button?>? extraButton = null)
     {
-        Owner = owner;
-        WindowStyle = WindowStyle.None;
-        AllowsTransparency = true;
-        Background = Brushes.Transparent;
-        ResizeMode = ResizeMode.NoResize;
-        SizeToContent = SizeToContent.WidthAndHeight;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        ShowInTaskbar = false;
+        DialogFrame.Setup(this, owner);
 
         var stack = new StackPanel { Width = 380 };
         var head = new TextBlock
@@ -56,17 +47,9 @@ public sealed class InputDialog : Window
         buttons.Children.Add(cancel); buttons.Children.Add(ok);
         stack.Children.Add(buttons);
 
-        var card = new Border
-        {
-            CornerRadius = new CornerRadius(14), Padding = new Thickness(22, 20, 22, 18), Margin = new Thickness(24),
-            BorderThickness = new Thickness(1), Child = stack,
-            Effect = new DropShadowEffect { BlurRadius = 36, ShadowDepth = 10, Direction = 270, Opacity = 0.18 },
-        };
-        card.SetResourceReference(Border.BackgroundProperty, "Gm.Popup");
-        card.SetResourceReference(Border.BorderBrushProperty, "Gm.PopupBorder");
-        card.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
+        var card = DialogFrame.Card(this, stack, new Thickness(22, 20, 22, 18));
         Content = card;
-        Loaded += (_, _) => { _fields.FirstOrDefault(f => f.Text.Length == 0)?.Focus(); (_fields.FirstOrDefault(f => f.IsFocused) ?? _fields.FirstOrDefault())?.Focus(); };
+        Loaded += (_, _) => (_fields.FirstOrDefault(f => f.Text.Length == 0) ?? _fields.FirstOrDefault())?.Focus();   // the first empty field
     }
 
     public void SetField(int i, string value) => _fields[i].Text = value;

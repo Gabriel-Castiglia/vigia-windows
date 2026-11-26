@@ -7,7 +7,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 
 namespace Vigia;
 
@@ -19,15 +18,8 @@ public sealed class ThemeDialog : Window
 
     public ThemeDialog(Window owner, string mode, string accent, Action<string> setMode, Action<string> setAccent)
     {
-        Owner = owner;
+        DialogFrame.Setup(this, owner);
         Title = Strings.Plain("ThemeMenu");
-        WindowStyle = WindowStyle.None;
-        AllowsTransparency = true;
-        Background = Brushes.Transparent;
-        ResizeMode = ResizeMode.NoResize;
-        SizeToContent = SizeToContent.WidthAndHeight;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        ShowInTaskbar = false;
 
         var font = (FontFamily)FindResource("Gm.Font");
         TextBlock Text(string s, double size, string brush, FontWeight? w = null, double bottom = 0)
@@ -85,15 +77,7 @@ public sealed class ThemeDialog : Window
         ok.Click += (_, _) => Close();
         stack.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0), Children = { ok } });
 
-        var card = new Border
-        {
-            CornerRadius = new CornerRadius(14), Padding = new Thickness(26, 20, 26, 18), Margin = new Thickness(24),
-            BorderThickness = new Thickness(1), Child = stack,
-            Effect = new DropShadowEffect { BlurRadius = 36, ShadowDepth = 10, Direction = 270, Opacity = 0.18 },
-        };
-        card.SetResourceReference(Border.BackgroundProperty, "Gm.Popup");
-        card.SetResourceReference(Border.BorderBrushProperty, "Gm.PopupBorder");
-        card.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed && e.Source == card) DragMove(); };
+        var card = DialogFrame.Card(this, stack, new Thickness(26, 20, 26, 18), dragFromCardOnly: true);
         Card = card;
         Content = card;
     }

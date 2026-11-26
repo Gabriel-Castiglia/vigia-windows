@@ -15,7 +15,8 @@ using System.Windows.Threading;
 
 namespace Vigia;
 
-/// <summary>Find/replace, outline, external-change watch, crash recovery and update check.</summary>
+/// <summary>Find/replace, outline, the watch for changes made by other programs, autosave, crash recovery and the
+/// single-instance hand-over (updates: MainWindow.Update.cs).</summary>
 public partial class MainWindow
 {
     // Per document, kept in its tab (MainWindow.Tabs.cs): _crlf and _bom (written back as the file had them), the
@@ -120,11 +121,11 @@ public partial class MainWindow
         await Js($"mdApp.find({Q(FindBox.Text)},{CaseArg},{step})");
     }
 
+    /// <summary>F3 / Shift+F3: the next or previous match; opens the find bar first when it is closed.</summary>
     private async Task FindStep(int step)
     {
         if (FindBar.Visibility != Visibility.Visible) { ShowFind(false); return; }
-        if (!_ready || FindBox.Text.Length == 0) return;
-        await Js($"mdApp.find({Q(FindBox.Text)},{CaseArg},{step})");
+        if (FindBox.Text.Length > 0) await FindRun(step);
     }
 
     private void UpdateFindCount(int index, int total)
@@ -196,8 +197,8 @@ public partial class MainWindow
                 if (tab != _cur) { tab.ChangedOnDisk = true; return; }
                 if (maybeGone) OnPossiblyGone(path); else OnExternalChange(path);
             });
-            // Editors and AI assistants often save by writing a temporary file and renaming it over
-            // this one, or by deleting and recreating it: every one of those is a change to reload.
+            // Many programs save by writing a temporary file and renaming it over this one, or by deleting and
+            // recreating it: every one of those is a change to reload.
             w.Changed += (_, _) => Changed(false);
             w.Created += (_, _) => Changed(false);
             // our own save renames the file away for a moment ("a.md -> a.md~RF1a2b.TMP") and puts the new one in its
@@ -333,8 +334,9 @@ public partial class MainWindow
     }
 
     // ------------------------------------------------------------------ crash recovery
-    private string DraftPath => Path.Combine(RecoveryDir, _recoveryId + ".md");
-    private string DraftMeta => Path.Combine(RecoveryDir, _recoveryId + ".json");
+    // each tab's draft: its text, and a note of its file, this process and the time (read by OfferRecoveryAsync)
+    private static string DraftPath(DocTab t) => Path.Combine(RecoveryDir, t.RecoveryId + ".md");
+    private static string DraftMeta(DocTab t) => Path.Combine(RecoveryDir, t.RecoveryId + ".json");
 
     /// <summary>The draft of the shown tab, every 20 s while it has unsaved changes (and when another tab is shown).
     /// Each tab has its own draft.</summary>
@@ -353,8 +355,8 @@ public partial class MainWindow
         {
             Directory.CreateDirectory(RecoveryDir);
             var md = JsonSerializer.Deserialize<string>(await JsIn(t, "mdApp.getMarkdownPreserving()")) ?? "";
-            AtomicFile.WriteAllText(Path.Combine(RecoveryDir, t.RecoveryId + ".md"), md, new UTF8Encoding(false));
-            AtomicFile.WriteAllText(Path.Combine(RecoveryDir, t.RecoveryId + ".json"),
+            AtomicFile.WriteAllText(DraftPath(t), md, new UTF8Encoding(false));
+            AtomicFile.WriteAllText(DraftMeta(t),
                 JsonSerializer.Serialize(new { path = t.Path, pid = Environment.ProcessId, time = DateTime.Now }), new UTF8Encoding(false));
         }
         catch { /* best effort */ }
@@ -385,13 +387,12 @@ public partial class MainWindow
 
     private static void ClearRecoveryOf(DocTab t)
     {
-        try { File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".md")); File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".json")); } catch { }
+        try { File.Delete(DraftPath(t)); File.Delete(DraftMeta(t)); } catch { }
     }
 
     private void ClearAllRecovery()
     {
-        foreach (var t in _tabs)
-            try { File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".md")); File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".json")); } catch { }
+        foreach (var t in _tabs) ClearRecoveryOf(t);
     }
 
     /// <summary>Called once the first page is ready: offer the drafts left by a Vigia that is no longer running,

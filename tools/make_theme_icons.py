@@ -24,7 +24,7 @@ out.mkdir(exist_ok=True)
 ACCENTS = {               # key: icon background
     "gold":   "#C8961E",  # dark gold: the default from 1.6.0 to 3.0.0
     "purple": "#5B2A86",  # Advent purple (default in 1.5)
-    "sky":    "#3FA9E6",  # celeste
+    "sky":    "#3FA9E6",  # sky blue: the default from 3.1.0
     "ember":  "#E8602C",  # the original orange (until 1.4.0)
     "red":    "#C8102E",
     "yellow": "#F2B705",

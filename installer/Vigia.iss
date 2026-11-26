@@ -44,22 +44,30 @@ VersionInfoDescription=Vigía Setup
 [Languages]
 Name: "en"; MessagesFile: "compiler:Default.isl"
 Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "ja"; MessagesFile: "compiler:Languages\Japanese.isl"
 
 [CustomMessages]
 en.AssocTask=Open .md files with Vigía
 es.AssocTask=Abrir los archivos .md con Vigía
+ja.AssocTask=.md ファイルを Vigía で開く
 en.AssocGroup=File types:
 es.AssocGroup=Tipos de archivo:
+ja.AssocGroup=ファイルの種類:
 en.Manual=Vigía user manual
 es.Manual=Manual de usuario de Vigía
+ja.Manual=Vigía ユーザー マニュアル
 en.MdDoc=Markdown document
+es.MdDoc=Documento Markdown
+ja.MdDoc=Markdown 文書
 en.FolderTask=Add "Open with Vigía" to folders in Explorer
 es.FolderTask=Agregar «Abrir con Vigía» a las carpetas en el Explorador
+ja.FolderTask=エクスプローラーのフォルダーに「Vigía で開く」を追加する
 en.FolderVerb=Open with Vigía
 es.FolderVerb=Abrir con Vigía
+ja.FolderVerb=Vigía で開く
 en.ExplorerGroup=Explorer:
 es.ExplorerGroup=Explorador:
-es.MdDoc=Documento Markdown
+ja.ExplorerGroup=エクスプローラー:
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -83,6 +91,7 @@ Name: "{app}\samples"; Attribs: hidden
 Name: "{autoprograms}\Vigía"; Filename: "{app}\Vigia.exe"; IconFilename: "{app}\Vigia.ico"
 Name: "{autoprograms}\{cm:Manual}"; Filename: "{app}\docs\Vigia_Manual_EN.pdf"; Languages: en
 Name: "{autoprograms}\{cm:Manual}"; Filename: "{app}\docs\Vigia_Manual_ES.pdf"; Languages: es
+Name: "{autoprograms}\{cm:Manual}"; Filename: "{app}\docs\Vigia_Manual_JA.pdf"; Languages: ja
 Name: "{autodesktop}\Vigía"; Filename: "{app}\Vigia.exe"; IconFilename: "{app}\Vigia.ico"; Tasks: desktopicon
 
 [Registry]

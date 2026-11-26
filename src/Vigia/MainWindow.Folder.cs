@@ -442,7 +442,9 @@ public partial class MainWindow
         foreach (var f in files) items.Add(MakeNode(f, false));
     }
 
-    private TreeViewItem MakeNode(string path, bool isDir)
+    /// <summary>A row of a tree. <paramref name="extendMenu"/> adds entries to its right-click menu each time that
+    /// menu is built (Favourites adds Move up / Move down).</summary>
+    private TreeViewItem MakeNode(string path, bool isDir, Action<ContextMenu>? extendMenu = null)
     {
         var icon = new TextBlock
         {
@@ -472,7 +474,9 @@ public partial class MainWindow
         item.ContextMenuOpening += (_, e) =>
         {
             if (!ReferenceEquals(Ancestor<TreeViewItem>(e.OriginalSource as DependencyObject), item)) return;   // a row inside this one
-            item.ContextMenu = isDir ? FolderMenu(path) : FileMenu(path, InFavorites(item));
+            var menu = isDir ? FolderMenu(path) : FileMenu(path, InFavorites(item));
+            extendMenu?.Invoke(menu);
+            item.ContextMenu = menu;
         };
         return item;
     }
@@ -850,8 +854,7 @@ public partial class MainWindow
     /// False when no open folder holds it.</summary>
     private bool RevealPath(string path)
     {
-        var root = _roots.Where(r => PathCmp.Equals(r, path) || path.StartsWith(r.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                         .OrderByDescending(r => r.Length).FirstOrDefault();
+        var root = _roots.Where(r => Wiki.Inside(path, r)).OrderByDescending(r => r.Length).FirstOrDefault();   // the innermost open folder
         if (root == null || _missing.Contains(root)) return false;
         var node = FilesTree.Items.OfType<TreeViewItem>().FirstOrDefault(i => PathCmp.Equals(i.Tag as string, root));
         if (node == null) return false;

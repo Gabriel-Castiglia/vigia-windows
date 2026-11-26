@@ -10,7 +10,6 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 
 namespace Vigia;
@@ -18,12 +17,14 @@ namespace Vigia;
 /// <summary>About window in the app's own style: icon, version, author, licence and credits (English/Spanish).</summary>
 public sealed class AboutDialog : Window
 {
-    public const string Credits =
+    /// <summary>The libraries the app is built with and their licences; {0} is the word "dictionaries" in the
+    /// interface language (AboutDicts).</summary>
+    private const string Credits =
         "TOAST UI Editor · ProseMirror · marked · github-markdown-css ·\n" +
         "Mermaid · KaTeX · gemoji — MIT\n" +
         "highlight.js · jsdiff — BSD-3-Clause\n" +
         "DOMPurify — MPL-2.0\n" +
-        "WeCantSpell.Hunspell — MIT · dictionaries: SCOWL en_US, RLA-ES\n" +
+        "WeCantSpell.Hunspell — MIT · {0}: SCOWL en_US, RLA-ES\n" +
         ".NET (MIT) · Microsoft Edge WebView2";
 
     public FrameworkElement Card { get; }
@@ -32,15 +33,8 @@ public sealed class AboutDialog : Window
     public AboutDialog(Window owner, string version)
     {
         _version = version;
-        Owner = owner;
+        DialogFrame.Setup(this, owner);
         Title = Strings.Plain("About");
-        WindowStyle = WindowStyle.None;
-        AllowsTransparency = true;
-        Background = Brushes.Transparent;
-        ResizeMode = ResizeMode.NoResize;
-        SizeToContent = SizeToContent.WidthAndHeight;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        ShowInTaskbar = false;
 
         var font = (FontFamily)FindResource("Gm.Font");
         TextBlock Text(string s, double size, string brush, FontWeight? w = null, double bottom = 0)
@@ -74,7 +68,7 @@ public sealed class AboutDialog : Window
         stack.Children.Add(lic);
 
         stack.Children.Add(Text(Strings.Get("AboutCreditsTitle"), 11, "Gm.TextMuted", FontWeights.SemiBold, 4));
-        stack.Children.Add(Text(Credits + "\n" + Strings.Get("AboutIcon"), 11, "Gm.TextMuted", null, 8));
+        stack.Children.Add(Text(string.Format(Credits, Strings.Get("AboutDicts")) + "\n" + Strings.Get("AboutIcon"), 11, "Gm.TextMuted", null, 8));
 
         var copy = new Button { Content = Strings.Get("AboutCopy"), Style = (Style)FindResource("Gm.DialogButton") };
         var ok = new Button { Content = "OK", IsDefault = true, IsCancel = true, Style = (Style)FindResource("Gm.DialogButton") };
@@ -87,15 +81,7 @@ public sealed class AboutDialog : Window
         buttons.Children.Add(copy); buttons.Children.Add(ok);
         stack.Children.Add(buttons);
 
-        var card = new Border
-        {
-            CornerRadius = new CornerRadius(14), Padding = new Thickness(26, 22, 26, 18), Margin = new Thickness(24),
-            BorderThickness = new Thickness(1), Child = stack,
-            Effect = new DropShadowEffect { BlurRadius = 36, ShadowDepth = 10, Direction = 270, Opacity = 0.18 },
-        };
-        card.SetResourceReference(Border.BackgroundProperty, "Gm.Popup");
-        card.SetResourceReference(Border.BorderBrushProperty, "Gm.PopupBorder");
-        card.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
+        var card = DialogFrame.Card(this, stack, new Thickness(26, 22, 26, 18));
         Card = card;
         Content = card;
     }

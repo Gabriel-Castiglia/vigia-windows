@@ -10,8 +10,8 @@ using System.Windows.Controls;
 namespace Vigia;
 
 /// <summary>Delete (right-click → Delete, or the Delete key on a row of the tree), only with the tree unlocked (the
-/// padlock of the Files panel; locked, the entry is greyed out): the file or folder goes to the
-/// Recycle Bin, where it can be restored. A network folder or a USB stick has no Recycle Bin: there it is deleted
+/// padlock of the Files panel; locked, the entry is greyed out): the file or folder goes to the Recycle Bin, where it
+/// can be restored. A network folder or a USB stick has no Recycle Bin: there it is deleted
 /// for good, and the question says so. A question comes first, with "Don't ask again in this window": that box
 /// lasts only as long as this window; a new window, or Vigía started again, asks again. The tabs of what is deleted
 /// are closed, and it leaves Favourites and Open recent. The open folders themselves (the coloured blocks) are
@@ -66,11 +66,12 @@ public partial class MainWindow
         if (!isDir && !File.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return false; }
         bool Affected(string? p) => p != null && (PathCmp.Equals(p, path) || (isDir && IsUnder(p, path)));
 
-        // its tabs go first, without saving: what they hold is being thrown away (the Recycle Bin keeps the file)
-        foreach (var t in _tabs.Where(t => Affected(t.Path)).ToList())
+        // its tabs go first, without saving: what they hold is being thrown away (the Recycle Bin keeps the file).
+        // A tab restored at start but never shown has its file in PendingOpen: it closes too.
+        foreach (var t in _tabs.Where(t => Affected(t.Path ?? t.PendingOpen)).ToList())
         {
             t.Dirty = false;
-            if (t == _cur) { _dirty = false; Watch(null); } else WatchTab(t, null);
+            WatchTab(t, null);
             await CloseTabAsync(t);
         }
         try

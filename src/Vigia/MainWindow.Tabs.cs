@@ -73,7 +73,6 @@ public partial class MainWindow
     private bool _crlf { get => _cur.Crlf; set => _cur.Crlf = value; }
     private string? _diskText { get => _cur.DiskText; set => _cur.DiskText = value; }
     private long _lastEditSeq { get => _cur.LastEditSeq; set => _cur.LastEditSeq = value; }
-    private string _recoveryId => _cur.RecoveryId;
 
     /// <summary>Marks an operation on the shown document; a tab switch asked for meanwhile waits until it ends,
     /// so the operation never finishes on another document than the one it started on.</summary>
@@ -322,8 +321,7 @@ public partial class MainWindow
     private async void OpenPath(string path, bool preview = false) => await OpenPathAsync(path, preview);
 
     /// <summary>Opens a file: the tab that already has it is shown; otherwise it goes into the shown tab when nobody
-    /// typed in it, or into a new tab next to it. True once the file is shown.</summary>
-    /// <summary>Opens a file in its tab (the one it already has, the untitled one nobody typed in, or a new one).
+    /// typed in it, or into a new tab next to it. True once the file is shown.
     /// <paramref name="preview"/> (a click in the Files panel with File → Preview tab on): the file goes in the
     /// passing tab, taking the place of the one shown there before.</summary>
     private async Task<bool> OpenPathAsync(string path, bool preview = false)
@@ -394,7 +392,7 @@ public partial class MainWindow
     /// <summary>Takes a hidden tab out of the window: its page, its watcher and its draft go.</summary>
     private void DropTab(DocTab t)
     {
-        try { File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".md")); File.Delete(Path.Combine(RecoveryDir, t.RecoveryId + ".json")); } catch { }
+        ClearRecoveryOf(t);
         t.Watcher?.Dispose(); t.Watcher = null;
         _tabs.Remove(t);
         if (t.View != null)

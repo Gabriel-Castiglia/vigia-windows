@@ -110,9 +110,10 @@ public partial class MainWindow
     /// <summary>A ![[name]] picture that did not load beside the document: the file of that name in the open folders.</summary>
     private async Task FindFileAsync(string name)
     {
+        var asker = _cur;   // the answer goes to this page, even if another tab is shown by then
         string? docDir = _path != null ? Path.GetDirectoryName(_path) : null;
         var panel = _roots.ToList();
         var f = await Task.Run(() => Wiki.FindFile(name, docDir, panel));   // a disk walk: off the window's thread
-        if (_ready) await Js($"mdApp.fileFound({Q(name)},{(f != null ? Q(DocUrl(f)) : "null")})");
+        if (asker.Ready) await JsIn(asker, $"mdApp.fileFound({Q(name)},{(f != null ? Q(DocUrl(f)) : "null")})");
     }
 }

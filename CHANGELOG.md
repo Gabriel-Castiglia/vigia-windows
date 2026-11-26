@@ -1,5 +1,29 @@
 # Changelog
 
+English · [Español](CHANGELOG.es.md) · [日本語](CHANGELOG.ja.md)
+
+## 3.5.2 — 2026-11-26
+
+- **Favourites: right-click → *Move up* / *Move down* is back.** Since 3.2.1 the right-click menu of a row is built
+  when it opens, and the two entries of a favourite were added to the menu that was thrown away; only dragging could
+  reorder the list.
+- **Deleting a file closes every tab of it**, also one reopened at start (*File → Reopen tabs at start*) that had not
+  been shown yet: it stayed, and showing it said the file no longer existed.
+- **The window's shortcuts are the page's**: with the focus in the Files panel, a pane or the menu, `Ctrl+Shift+O`
+  showed the Open dialog instead of the outline, and `Ctrl+F`, `Ctrl+H`, `Ctrl++`, `Ctrl+-` and `Ctrl+0` did nothing.
+- The check of `[[name]]` links and the search for a `![[picture]]` in the open folders answer the tab that asked,
+  even when another tab is shown by then.
+- **The installer is in Japanese too**, as 3.2.0 announced (it offered only English and Spanish), and puts the
+  Japanese manual in the Start menu.
+- *About Vigía* says "dictionaries" in the interface language.
+- The user manuals use the app's own colours (sky blue on the light grey of the window) with the icon on the cover
+  and beside the contents. They describe the whole toolbar, the Search switch of the layout panel and the new items
+  of a folder's right-click menu, and name Gryphmark among the old names; the Spanish manual says *índice*, as the
+  menus do, and lists every shortcut.
+- README and changelog in English, Spanish and Japanese.
+- Code cleanup with no change in behaviour: the dialogs share one frame, duplicated helpers merged, settings and page
+  functions nobody used removed, every comment checked.
+
 ## 3.5.1 — 2026-11-26
 
 - **New file, new folder and delete only with the tree unlocked** (the padlock at the top of the Files panel, as for
@@ -164,7 +188,7 @@
 ## 3.0.0 — 2026-11-20
 
 **Gryphmark is now Vigía**, a name easier to remember: the one who keeps watch from above, as the app watches a
-Markdown file while an AI writes it. The icon is a lighthouse, from Debenne's design for a lighthouse (c. 1815,
+Markdown file while another program writes it. The icon is a lighthouse, from Debenne's design for a lighthouse (c. 1815,
 The Met, CC0). The repository is now `vigia-windows` (GitHub forwards the old address).
 
 - Installing Vigía removes Gryphmark (and Quillforge, if it is still there) in silence. The first time Vigía starts,
@@ -336,7 +360,7 @@ Windows and macOS now share one version number: this is 2.0.0 on both.
   export show it, so a document can no longer run scripts in the editor page. Links open only web pages, e-mail,
   other Markdown files, pictures and PDFs; a link to any other file (a program, a script, a shortcut) shows it in
   Explorer instead of running it.
-- **Live reload that keeps up:** a file changed by another program, such as an AI assistant, is reloaded in place,
+- **Live reload that keeps up:** a file changed by another program is reloaded in place,
   and every view keeps its scroll position. Saves that write a new file and rename it over the old one are now
   followed too, and a burst of changes always ends with the last version on screen. A file that another program
   holds open is read with shared access. Typing while a reload happens always marks the document modified, so

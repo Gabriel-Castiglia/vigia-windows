@@ -242,7 +242,13 @@ public partial class MainWindow
     private TreeViewItem MakeFavoriteNode(string path, bool isDir, bool canUp, bool canDown)
     {
         bool exists = isDir ? SafeDirExists(path) : File.Exists(path);
-        var item = MakeNode(path, isDir && exists);
+        // the row's menu is built when it opens (MakeNode), so the two entries are added to each new one
+        var item = MakeNode(path, isDir && exists, menu =>
+        {
+            menu.Items.Insert(0, MenuEntry(Strings.Get("FavUp"), () => MoveFavorite(path, -1), enabled: canUp));
+            menu.Items.Insert(1, MenuEntry(Strings.Get("FavDown"), () => MoveFavorite(path, +1), enabled: canDown));
+            menu.Items.Insert(2, new Separator());
+        });
         if (item.Header is DockPanel header && header.Children.OfType<TextBlock>().LastOrDefault() is { } name)
         {
             name.Inlines.Clear();
@@ -252,11 +258,6 @@ public partial class MainWindow
             name.Inlines.Add(where);
             if (!exists) name.SetResourceReference(TextBlock.ForegroundProperty, "Gm.TextMuted");
         }
-        if (item.ContextMenu is { } menu)
-        {
-            menu.Items.Insert(0, MenuEntry(Strings.Get("FavUp"), () => MoveFavorite(path, -1), enabled: canUp));
-            menu.Items.Insert(1, MenuEntry(Strings.Get("FavDown"), () => MoveFavorite(path, +1), enabled: canDown));
-            menu.Items.Insert(2, new Separator());        }
         return item;
     }
 }

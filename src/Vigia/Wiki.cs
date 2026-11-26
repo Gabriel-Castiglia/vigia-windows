@@ -29,7 +29,7 @@ public static class Wiki
     }
 
     // Markdown files of the searched folders by key, kept for two seconds: a page with a hundred
-    // links asks once, and a file an assistant has just written is found on the next click.
+    // links asks once, and a file another program has just written is found on the next click.
     private static (string Roots, DateTime At, Dictionary<string, List<string>> Files)? _cache;
     private static readonly object Lock = new();
 
@@ -119,21 +119,24 @@ public static class Wiki
             catch { }   // unreadable folder: skipped
         }
         foreach (var root in Searched(docFolder, panel)) Look(root, 0);
-        if (hits.Count == 0) return null;
-        if (docFolder == null) return hits[0];
-        var dir0 = Path.GetFullPath(docFolder).TrimEnd('\\').Split('\\');
-        int Shared(string f) => Path.GetDirectoryName(f)!.Split('\\').Zip(dir0).TakeWhile(p => PathCmp.Equals(p.First, p.Second)).Count();
-        return hits.Distinct(PathCmp).OrderByDescending(Shared).ThenBy(f => f.Split('\\').Length).First();
+        return hits.Count == 0 ? null : Nearest(hits.Distinct(PathCmp).ToList(), docFolder);
+    }
+
+    /// <summary>Of several files with the name, the nearest to the document: the longest path shared with its folder,
+    /// then the shortest path. Without a document, the first one found.</summary>
+    private static string Nearest(List<string> hits, string? docFolder)
+    {
+        if (docFolder == null || hits.Count == 1) return hits[0];
+        var dir = Path.GetFullPath(docFolder).TrimEnd('\\').Split('\\');
+        int Shared(string f) => Path.GetDirectoryName(f)!.Split('\\').Zip(dir).TakeWhile(p => PathCmp.Equals(p.First, p.Second)).Count();
+        return hits.OrderByDescending(Shared).ThenBy(f => f.Split('\\').Length).First();
     }
 
     /// <summary>The file a [[name]] points to, or null.</summary>
     public static string? Resolve(string name, string? docFolder, IEnumerable<string> panel)
     {
         if (!Files(Searched(docFolder, panel)).TryGetValue(Key(name), out var hits) || hits.Count == 0) return null;
-        if (docFolder == null || hits.Count == 1) return hits[0];
-        var dir = Path.GetFullPath(docFolder).TrimEnd('\\').Split('\\');
-        int Shared(string f) => Path.GetDirectoryName(f)!.Split('\\').Zip(dir).TakeWhile(p => PathCmp.Equals(p.First, p.Second)).Count();
-        return hits.OrderByDescending(Shared).ThenBy(f => f.Split('\\').Length).First();
+        return Nearest(hits, docFolder);
     }
 
     /// <summary>For each name, whether it points to a file.</summary>

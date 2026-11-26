@@ -5,9 +5,7 @@
 
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 
 namespace Vigia;
 
@@ -21,14 +19,7 @@ public sealed class ChoiceDialog : Window
 
     private ChoiceDialog(Window owner, string text, string[] buttons, int cancel, string? checkLabel = null)
     {
-        Owner = owner;
-        WindowStyle = WindowStyle.None;
-        AllowsTransparency = true;
-        Background = Brushes.Transparent;
-        ResizeMode = ResizeMode.NoResize;
-        SizeToContent = SizeToContent.WidthAndHeight;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        ShowInTaskbar = false;
+        DialogFrame.Setup(this, owner);
         _choice = cancel;
 
         var lines = text.Split('\n', 2);
@@ -62,15 +53,7 @@ public sealed class ChoiceDialog : Window
         }
         stack.Children.Add(row);
 
-        var card = new Border
-        {
-            CornerRadius = new CornerRadius(14), Padding = new Thickness(22, 20, 22, 18), Margin = new Thickness(24),
-            BorderThickness = new Thickness(1), Child = stack,
-            Effect = new DropShadowEffect { BlurRadius = 36, ShadowDepth = 10, Direction = 270, Opacity = 0.18 },
-        };
-        card.SetResourceReference(Border.BackgroundProperty, "Gm.Popup");
-        card.SetResourceReference(Border.BorderBrushProperty, "Gm.PopupBorder");
-        card.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
+        var card = DialogFrame.Card(this, stack, new Thickness(22, 20, 22, 18));
         Content = card;
     }
 

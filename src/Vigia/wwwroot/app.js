@@ -296,7 +296,6 @@
     }
   }
 
-
   // ------------------------------------------------------------------ spell check
   // The words are checked by the host (SpellChecker.cs: Hunspell, several languages at once); the page marks the
   // ones it reports with a red wavy line, in the Visual and the Markdown views, and leaves code out. The browser's
@@ -454,7 +453,7 @@
   }
   // The editor's parser reads a properties block only when the text has one by the rule above. Its option
   // frontMatter is read once, when the first editor is made, and adds the rule for good; the bundle is patched
-  // so that the rule also asks window.gmFrontMatter (web.sh / build.ps1). Set before each whole read of a text
+  // so that the rule also asks window.gmFrontMatter (build.ps1). Set before each whole read of a text
   // (load, reload); while typing it stays as it was, so a --- typed on the first line hides nothing.
   function frontMatterFor(text) { window.gmFrontMatter = !!frontMatterMatch(text || ''); }
   function yamlScalar(s) {
@@ -760,7 +759,7 @@
 
   // ------------------------------------------------------------------ what another program changed
   // After a reload, the blocks that are new or different are marked in green for a few seconds, in the
-  // view on screen, so the reader sees what the AI wrote. A highlight paints over the text and leaves the
+  // view on screen, so the reader sees what the other program wrote. A highlight paints over the text and leaves the
   // editor's own DOM alone. The blocks of each view are compared as text before and after the reload.
   const changeRoots = () => ({
     preview: ['#preview'],
@@ -985,14 +984,14 @@
       applyMode(); sendOutline();
       return true;
     },
-    // The same file changed on disk (another program, often an AI assistant, is editing it):
+    // The same file changed on disk (another program is editing it):
     // swap the text in place and keep the reader where they were in every view.
     async reload(markdown) {
       if (!editor) { this.load(markdown); return true; }
       const before = changeRoots().map(blockTexts);
       const panes = ['#previewHost', '#editorHost .toastui-editor-md-preview', '#editorHost .ProseMirror'];
       const kept = panes.map((sel) => Array.from(document.querySelectorAll(sel)).map((el) => el.scrollTop));
-      // a reader at the end of a view follows the end: what the AI appends comes into sight (as in a terminal)
+      // a reader at the end of a view follows the end: what the other program appends comes into sight (as in a terminal)
       const atEnd = panes.map((sel) => Array.from(document.querySelectorAll(sel)).map((el) =>
         el.scrollHeight > el.clientHeight + 2 && el.scrollHeight - el.scrollTop - el.clientHeight < 40));
       original = (markdown || '').replace(/\r\n/g, '\n');
@@ -1021,7 +1020,6 @@
     getMarkdown() { return editorText(); },
     getMarkdownPreserving() { return currentText(); },
     plainText(markdown) { return plainText(markdown); },
-    markSaved(text) { original = text.replace(/\r\n/g, '\n'); baseline = editorText(); },
     // What a save writes, taken and marked as saved in one step. Taking the text and marking it in two
     // calls let an edit typed in between enter the new baseline without being in the saved text, and
     // the next save then dropped it. seq is the last edit the text holds: an edit after it keeps the
@@ -1051,13 +1049,12 @@
       m.v.focus();
       return true;
     },
-    spellState() { return { bad: [...spell.bad].filter((x) => x[1]).map((x) => x[0]), marked: document.querySelectorAll('.gm-misspelled').length }; },
     // Width of the text column in the Visual and GitHub views, in px; 0 = the whole window.
     setWidth(px) {
       px = Number(px) || 0;
       document.body.style.setProperty('--gm-col', (px > 0 ? Math.max(600, px) : 100000) + 'px');
     },
-    // wiki: the host resolves [[name]] links (the macOS app does; until the Windows app does, they stay as text)
+    // wiki: the host resolves [[name]] links (MainWindow passes true; false leaves them as text)
     init(lang, theme, mode, spell, locked, wiki) { state = { lang, theme, mode, spell: spell !== false, locked: !!locked, wiki: !!wiki }; applyTheme(); build(''); applyMode(); },
     setLocked(on) { state.locked = !!on; applyLock(); },
     exec(cmd, payload) { if (!editor || state.mode === 'preview' || state.locked) return; try { editor.exec(cmd, payload); } catch (e) { } editor.focus(); },

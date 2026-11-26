@@ -256,7 +256,7 @@ js = """
     // a reload marks in green what another program changed: one paragraph changed and one added are two
     // marks in each view; a reload with the same text marks nothing
     const R1 = '# Doc\\n\\nFirst para.\\n\\nSecond para.\\n\\nThird para.\\n';
-    const R2 = '# Doc\\n\\nFirst para.\\n\\nSecond para, rewritten by the AI.\\n\\nThird para.\\n\\nA new one.\\n';
+    const R2 = '# Doc\\n\\nFirst para.\\n\\nSecond para, rewritten by another program.\\n\\nThird para.\\n\\nA new one.\\n';
     const marks = {};
     for (const mode of ['preview', 'visual', 'source']) {
       mdApp.setMode(mode); mdApp.load(R1, null); await new Promise(r => setTimeout(r, 300));
@@ -270,7 +270,7 @@ js = """
     mdApp.setMode('visual'); mdApp.load('# L\\n\\n- one\\n- two\\n', null); await new Promise(r => setTimeout(r, 200));
     await mdApp.reload('# L\\n\\n- one\\n- two\\n- three\\n');
     out.reload_marks_list_item = mdApp.changesMarked() === 1;
-    // a reader at the end follows what the AI appends; a reader in the middle stays where they were
+    // a reader at the end follows what another program appends; a reader in the middle stays where they were
     const FE = Array.from({ length: 200 }, (_, i) => 'Line ' + i).join('\\n\\n');
     mdApp.setMode('preview'); mdApp.load(FE, null); await new Promise(r => setTimeout(r, 300));
     const ph = document.getElementById('previewHost');

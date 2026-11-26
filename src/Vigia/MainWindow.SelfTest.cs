@@ -41,6 +41,15 @@ public partial class MainWindow
 
     private async Task<int> JsInt(string expr) => int.TryParse(await Js(expr), out var n) ? n : -1;
 
+    /// <summary>Opens a tree row's right-click menu as a right click does: the menu is built in ContextMenuOpening.</summary>
+    private static System.Windows.Controls.ContextMenu? OpenRowMenu(System.Windows.Controls.TreeViewItem row)
+    {
+        var args = (System.Windows.Controls.ContextMenuEventArgs)Activator.CreateInstance(typeof(System.Windows.Controls.ContextMenuEventArgs),
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic, null, new object[] { row, true }, null)!;
+        row.RaiseEvent(args);
+        return row.ContextMenu;
+    }
+
     internal async Task RunSelfTestAsync()
     {
         var tmp = Path.Combine(Path.GetTempPath(), "vigia-selftest-" + Guid.NewGuid().ToString("N"));
@@ -62,6 +71,15 @@ public partial class MainWindow
             Check("japanese: chosen from a Japanese Windows, and listed in the Language menu",
                   Strings.ForCulture("ja") == "ja" && Strings.ForCulture("es") == "es" && Strings.ForCulture("fr") == "en" && Strings.Languages.Any(l => l.Code == "ja"), "");
             Check("autosave: on by default", new Settings().AutoSave);
+            // the window's own shortcuts (focus outside the page) are the page's: Ctrl+Shift+O used to open a file
+            const System.Windows.Input.ModifierKeys ctl = System.Windows.Input.ModifierKeys.Control, sh = System.Windows.Input.ModifierKeys.Shift;
+            Check("keys: the window's shortcuts match the page's (Ctrl+Shift+O is the outline, not Open)",
+                  WindowShortcut(System.Windows.Input.Key.O, ctl | sh) == "outline" && WindowShortcut(System.Windows.Input.Key.O, ctl) == "open"
+                  && WindowShortcut(System.Windows.Input.Key.F, ctl) == "find" && WindowShortcut(System.Windows.Input.Key.F, ctl | sh) == "search"
+                  && WindowShortcut(System.Windows.Input.Key.H, ctl) == "replace" && WindowShortcut(System.Windows.Input.Key.OemPlus, ctl) == "zoom+"
+                  && WindowShortcut(System.Windows.Input.Key.D0, ctl) == "zoom0" && WindowShortcut(System.Windows.Input.Key.Tab, ctl | sh) == "prevtab"
+                  && WindowShortcut(System.Windows.Input.Key.O, System.Windows.Input.ModifierKeys.None) == null
+                  && WindowShortcut(System.Windows.Input.Key.E, ctl) == null, "");
             _settings.AutoSave = true; AutoSaveBtn.IsChecked = true;
             await SetReadOnly(false); await SetMode("visual");
 
@@ -167,6 +185,17 @@ public partial class MainWindow
             MoveFavoriteTo(fc, fb);
             favRows = FilesTree.Items.OfType<System.Windows.Controls.TreeViewItem>().First().Items.OfType<System.Windows.Controls.TreeViewItem>().Select(i => i.Tag as string).ToList();
             Check("favourites: dragged onto another one, it takes its place", favRows.Count == 3 && favRows[1] == fc && favRows[2] == fb, string.Join(" | ", favRows));
+            // right-click on a favourite: Move up / Move down among the files (its menu is built when it opens, and
+            // up to 3.5.1 those two entries were lost there)
+            var fcRow = FilesTree.Items.OfType<System.Windows.Controls.TreeViewItem>().First().Items.OfType<System.Windows.Controls.TreeViewItem>().First(i => i.Tag as string == fc);
+            var fcMenu = OpenRowMenu(fcRow);
+            var favUp = fcMenu?.Items.OfType<System.Windows.Controls.MenuItem>().FirstOrDefault(m => m.Header as string == Strings.Get("FavUp"));
+            var favDown = fcMenu?.Items.OfType<System.Windows.Controls.MenuItem>().FirstOrDefault(m => m.Header as string == Strings.Get("FavDown"));
+            bool favMenuOk = favUp is { IsEnabled: false } && favDown is { IsEnabled: true };   // a folder is above it, a file below
+            favDown?.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent, favDown));
+            favRows = FilesTree.Items.OfType<System.Windows.Controls.TreeViewItem>().First().Items.OfType<System.Windows.Controls.TreeViewItem>().Select(i => i.Tag as string).ToList();
+            Check("favourites: right-click → Move up / Move down", favMenuOk && favRows.Count == 3 && favRows[1] == fb && favRows[2] == fc,
+                  $"menu {favMenuOk} | " + string.Join(" | ", favRows));
             _settings.Recent.Insert(0, fb); _settings.RecentPanel = false; ToggleRecentPanel();
             var blocks = FilesTree.Items.OfType<System.Windows.Controls.TreeViewItem>().Select(i => i.Tag as string).ToList();
             Check("recent: when turned on, a block under the favourites", blocks.Count >= 2 && blocks[0] == FavTag && blocks[1] == RecentTag, string.Join(" | ", blocks));
@@ -263,6 +292,12 @@ public partial class MainWindow
             bool delFile = await DeletePath(gone);
             Check("delete: a file, its tab closed and out of Favourites", delFile && !File.Exists(gone) && !PathCmp.Equals(_path, gone)
                   && !_tabs.Any(x => PathCmp.Equals(x.Path, gone)) && !_settings.FavoriteFiles.Contains(gone, PathCmp), $"path {_path}");
+            // a tab restored at start but never shown keeps its file in PendingOpen: it closes with the file too
+            var pending = CreateNewItem(caseDir, "Pending", false);
+            var pendingTab = AddTab(pending, _tabs.Count);
+            RefreshTabs();
+            bool delPending = await DeletePath(pending);
+            Check("delete: a tab not shown yet closes with its file", delPending && !_tabs.Contains(pendingTab) && FindTab(pending) == null, $"tabs {_tabs.Count}");
             var inside = CreateNewItem(newDir, "Inside", false);
             bool delDir = await DeletePath(newDir);
             Check("delete: a folder with what it holds", delDir && !Directory.Exists(newDir) && !File.Exists(inside), "");
@@ -322,7 +357,7 @@ public partial class MainWindow
 
             // another program writes: the text is shown and what changed is marked
             await Task.Delay(600);
-            File.WriteAllText(a, "# Auto\n\nbody\n\nOutside, from the AI.\n");
+            File.WriteAllText(a, "# Auto\n\nbody\n\nOutside, from another program.\n");
             ok = await WaitFor(async () => await JsInt("mdApp.getMarkdown().includes('Outside') ? 1 : 0") == 1, 4);
             int marked = await JsInt("mdApp.changesMarked()");
             Check("live reload: another program's change is shown and marked in green", ok && marked > 0 && !_dirty, $"shown {ok}, marked {marked}");

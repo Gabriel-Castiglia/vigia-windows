@@ -221,11 +221,12 @@ public partial class MainWindow : Window
                 await FindFileAsync(root.GetProperty("name").GetString() ?? "");
                 break;
             case "wikinames":
+                var asker = _cur;   // the answer goes to this page, even if another tab is shown by then
                 var names = root.GetProperty("names").EnumerateArray().Select(n => n.GetString() ?? "").ToList();
                 string? docDir = _path != null ? Path.GetDirectoryName(_path) : null;
                 var panel = _roots.ToList();
                 var found = await Task.Run(() => Wiki.Exist(names, docDir, panel));   // a disk walk: off the window's thread
-                if (_ready) await Js($"mdApp.wikiState({JsonSerializer.Serialize(found)})");
+                if (asker.Ready) await JsIn(asker, $"mdApp.wikiState({JsonSerializer.Serialize(found)})");
                 break;
         }
     }
@@ -266,11 +267,13 @@ public partial class MainWindow : Window
         else Flash(string.Format(Strings.Get("WikiMissing"), Wiki.Key(name)));
     }
 
-    private static bool IsViewable(string p) =>
-        new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".pdf" }.Contains(Path.GetExtension(p).ToLowerInvariant());
+    // what a link of the GitHub view may open: in the file's own viewer, or here in a tab
+    private static readonly HashSet<string> ViewableExt = new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".pdf" };
+    private static readonly HashSet<string> LinkedTextExt = new(StringComparer.OrdinalIgnoreCase) { ".md", ".markdown", ".mdown", ".mkd", ".txt" };
 
-    private static bool IsMarkdown(string p) =>
-        new[] { ".md", ".markdown", ".mdown", ".mkd", ".txt" }.Contains(Path.GetExtension(p).ToLowerInvariant());
+    private static bool IsViewable(string p) => ViewableExt.Contains(Path.GetExtension(p));
+
+    private static bool IsMarkdown(string p) => LinkedTextExt.Contains(Path.GetExtension(p));
 
     // ------------------------------------------------------------------ Files
     // (opening a file picks or makes its tab: OpenPath / OpenPathAsync in MainWindow.Tabs.cs)
@@ -679,25 +682,34 @@ public partial class MainWindow : Window
     {
         try
         {
-            // Shortcuts when the focus is on the menu or the window frame (the page handles its own)
-            if (Keyboard.Modifiers != ModifierKeys.Control && Keyboard.Modifiers != (ModifierKeys.Control | ModifierKeys.Shift)) return;
+            // Shortcuts when the focus is outside the page (the menu, a pane, the window frame); the page handles its
+            // own (app.js, keyboard shortcuts), with the same keys
             if (Web.IsKeyboardFocusWithin) return;
-            string? cmd = e.Key switch
-            {
-                Key.Tab => Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? "prevtab" : "nexttab",
-                Key.PageDown => "nexttab", Key.PageUp => "prevtab",
-                Key.T when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "reopentab",
-                Key.N => "new", Key.O => "open", Key.P => "print", Key.W => "close",
-                Key.S => Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? "saveas" : "save",
-                Key.D1 => "mode1", Key.D2 => "mode2", Key.D3 => "mode3",
-                Key.E when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "files",
-                Key.F when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "search",
-                Key.L when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => "readonly",
-                _ => null,
-            };
-            if (cmd != null) { e.Handled = true; await RunCommand(cmd); }
+            if (WindowShortcut(e.Key, Keyboard.Modifiers) is { } cmd) { e.Handled = true; await RunCommand(cmd); }
         }
         catch (Exception ex) { LogError("OnKey", ex); }
+    }
+
+    /// <summary>The command of a Ctrl or Ctrl+Shift shortcut, or null: the same keys as the page's (app.js).</summary>
+    internal static string? WindowShortcut(Key key, ModifierKeys mods)
+    {
+        if (mods != ModifierKeys.Control && mods != (ModifierKeys.Control | ModifierKeys.Shift)) return null;
+        bool shift = mods.HasFlag(ModifierKeys.Shift);
+        return key switch
+        {
+            Key.Tab => shift ? "prevtab" : "nexttab",
+            Key.PageDown => "nexttab", Key.PageUp => "prevtab",
+            Key.T when shift => "reopentab",
+            Key.O => shift ? "outline" : "open",
+            Key.F => shift ? "search" : "find",
+            Key.E when shift => "files",
+            Key.L when shift => "readonly",
+            Key.N => "new", Key.P => "print", Key.W => "close", Key.H => "replace",
+            Key.S => shift ? "saveas" : "save",
+            Key.D1 => "mode1", Key.D2 => "mode2", Key.D3 => "mode3",
+            Key.OemPlus or Key.Add => "zoom+", Key.OemMinus or Key.Subtract => "zoom-", Key.D0 or Key.NumPad0 => "zoom0",
+            _ => null,
+        };
     }
 
     // ------------------------------------------------------------------ Menu
@@ -711,7 +723,7 @@ public partial class MainWindow : Window
         ["Heading"] = "", ["Quote"] = "", ["Ul"] = "", ["Ol"] = "",
         ["Task"] = "", ["CodeBlock"] = "", ["Hr"] = "",
         ["ModeVisual"] = "", ["ModeSource"] = "", ["ModePreview"] = "",
-        ["Dark"] = "", ["ZoomIn"] = "", ["ZoomOut"] = "", ["ZoomReset"] = "",
+        ["ZoomIn"] = "", ["ZoomOut"] = "", ["ZoomReset"] = "",
         ["AutoSave"] = "\uE895", ["FavCurrent"] = "\uE734", ["SearchPanelMenu"] = "\uE721", ["RecentPanelMenu"] = "\uE81C",
         ["OpenDir"] = "\uE838", ["Files"] = "\uE8B7", ["CloseDir"] = "\uE711", ["Sample"] = "\uE736", ["Manual"] = "", ["Guide"] = "", ["About"] = "",
         ["Find"] = "", ["Replace"] = "", ["FindNext"] = "", ["Outline"] = "", ["CheckUpdates"] = "", ["RecentClear"] = "",

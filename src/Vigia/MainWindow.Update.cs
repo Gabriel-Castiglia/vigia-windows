@@ -13,13 +13,13 @@ using System.Windows;
 namespace Vigia;
 
 /// <summary>Help → Check for updates (and once a day by itself): when GitHub has a newer release, one question,
-/// and then everything happens alone. The release's SHA256SUMS.txt must carry a valid signature (release.sig, 3.3.0
-/// on: ECDSA P-256 by one of the author's keys, ReleaseSignature.cs); the installer is downloaded and checked against that list (a release
-/// without a valid signature, or a file that does not match, is thrown away, never run); every other Vigia window is asked to close (each one
-/// saves or asks as when it is closed by hand) and notes how to come back; the installer runs in silence keeping the
-/// install options, waits for this window to be gone, and reopens every window that was open, each with its
-/// profile and its file. If a window does not close (its question was answered "Cancel"), nothing is installed and
-/// the windows that had closed come back.</summary>
+/// and then everything happens alone. The release's SHA256SUMS.txt must carry a valid signature (release.sig, from
+/// 3.3.0: ECDSA P-256 by one of the author's keys, ReleaseSignature.cs); the installer is downloaded and checked
+/// against that list (a release without a valid signature, or a file that does not match, is thrown away, never run).
+/// Every other Vigía window is asked to close (each one saves or asks as when it is closed by hand) and notes how to
+/// come back; the installer runs in silence keeping the install options, waits for this window to be gone, and
+/// reopens every window that was open, each with its profile and its files. If a window does not close (its question
+/// was answered "Cancel"), nothing is installed and the windows that had closed come back.</summary>
 public partial class MainWindow
 {
     private static string UpdateDir => Path.Combine(Path.GetTempPath(), "VigiaUpdate");
@@ -267,8 +267,8 @@ public partial class MainWindow
         var alive = Process.GetProcesses().Select(p => p.Id).ToHashSet();
         foreach (var f in SafeFiles(RelaunchDir))
         {
-            bool closed = !int.TryParse(Path.GetFileNameWithoutExtension(f), out var pid) || !alive.Contains(pid) || pid == Environment.ProcessId;
-            if (closed && pid != Environment.ProcessId) StartFromFile(f, false);
+            bool parsed = int.TryParse(Path.GetFileNameWithoutExtension(f), out var pid);
+            if (pid != Environment.ProcessId && (!parsed || !alive.Contains(pid))) StartSelf(ReadArgs(f).ToArray());   // that window had closed
             try { File.Delete(f); } catch { }
         }
     }
@@ -278,13 +278,6 @@ public partial class MainWindow
     private static List<string> ReadArgs(string f)
     {
         try { return JsonSerializer.Deserialize<List<string>>(File.ReadAllText(f)) ?? new(); } catch { return new(); }
-    }
-
-    private static void StartFromFile(string f, bool updated)
-    {
-        var args = ReadArgs(f);
-        if (updated) args.Add("--updated");
-        StartSelf(args.ToArray());
     }
 
     /// <summary>Vigia --after-update (run by the installer): reopens every window that was open. The main
