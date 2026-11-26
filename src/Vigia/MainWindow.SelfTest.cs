@@ -223,6 +223,35 @@ public partial class MainWindow
             var moved = Path.Combine(caseDir, "two.md");
             Check("files: Open recent follows a rename", _settings.Recent.Contains(moved, StringComparer.OrdinalIgnoreCase)
                   && !_settings.Recent.Contains(n1, StringComparer.OrdinalIgnoreCase), string.Join(" | ", _settings.Recent.Take(4)));
+
+            // new Markdown file and new folder (toolbar): into the folder selected in the tree, the folder of the
+            // selected file, or the default folder; a free name offered; never over an existing item
+            OpenFolder(ops, showPanel: true); UpdateLayout();
+            DefaultNewDir = Path.Combine(tmp, "default new");
+            bool r1 = RevealPath(caseDir);
+            var d1 = NewItemDir(out bool def1);
+            RevealPath(moved);
+            var d2 = NewItemDir(out bool def2);
+            if (FilesTree.SelectedItem is System.Windows.Controls.TreeViewItem selRow) selRow.IsSelected = false;
+            var d3 = NewItemDir(out bool def3);
+            Check("new items: where they go", r1 && PathCmp.Equals(d1, caseDir) && !def1 && PathCmp.Equals(d2, caseDir) && !def2
+                  && d3 == DefaultNewDir && def3, $"{d1} | {d2} | {d3}");
+            var notes = CreateNewItem(caseDir, "Notes", false);
+            Check("new items: a file gets .md and its name as a heading", PathCmp.Equals(notes, Path.Combine(caseDir, "Notes.md"))
+                  && File.ReadAllText(notes).StartsWith("# Notes"), notes);
+            bool Refuses(Action a) { try { a(); return false; } catch (InvalidOperationException) { return true; } }
+            Check("new items: an existing or invalid name is refused, nothing overwritten",
+                  Refuses(() => CreateNewItem(caseDir, "Notes.md", false)) && Refuses(() => CreateNewItem(caseDir, "NUL", true))
+                  && Refuses(() => CreateNewItem(caseDir, "two.md", true)) && File.ReadAllText(notes).StartsWith("# Notes"), "");
+            Check("new items: a free name is offered", FreeName(caseDir, "Notes", ".md") == "Notes 2.md" && FreeName(caseDir, "Fresh", "") == "Fresh", "");
+            var newDir = CreateNewItem(caseDir, "Folder A", true);
+            RefreshTree(); RevealPath(newDir);
+            RefreshTree();   // as the folder watcher does: the new folder stays selected for the next file
+            Check("new items: a folder, still selected after the tree is rebuilt", Directory.Exists(newDir)
+                  && PathCmp.Equals((FilesTree.SelectedItem as System.Windows.Controls.TreeViewItem)?.Tag as string, newDir) && PathCmp.Equals(NewItemDir(out _), newDir),
+                  (FilesTree.SelectedItem as System.Windows.Controls.TreeViewItem)?.Tag as string ?? "none");
+            var inDefault = CreateNewItem(DefaultNewDir, "First", false);
+            Check("new items: the default folder is made when needed", File.Exists(inDefault), inDefault);
             await NewDocAsync();
 
             // pictures: beside the document, in a parent folder (../), by an absolute path, and a ![[name]] found in

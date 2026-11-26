@@ -919,6 +919,7 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------------ Native toolbar
     private bool _segWired;
+    private readonly HashSet<Button> _panelTools = new();
 
     private Button Tool(string glyph, string tipKey, string? gesture, Func<Task> action)
     {
@@ -928,6 +929,7 @@ public partial class MainWindow : Window
             Style = (Style)FindResource("Gm.ToolButton"),
             ToolTip = Strings.Plain(tipKey) + (gesture != null ? "   " + gesture : ""),
         };
+        System.Windows.Automation.AutomationProperties.SetName(b, Strings.Plain(tipKey));   // Narrator says this, not the icon's character
         b.Click += async (_, _) => { await action(); if (_ready) await Js("mdApp.focus()"); };
         return b;
     }
@@ -936,9 +938,18 @@ public partial class MainWindow : Window
     {
         Tools.Children.Clear();
         void Sep() => Tools.Children.Add(new Border { Style = (Style)FindResource("Gm.ToolSep") });
+        var newFile = Tool("\uE8A5", "NewMarkdown", null, () => NewItemAsync(false));
+        newFile.Content = NewFileGlyph(); newFile.Tag = "\uE8A5";   // Tag: the glyph of its entry in the ⋯ menu
+        Tools.Children.Add(newFile);
+        Tools.Children.Add(Tool("\uE8F4", "NewFolder", null, () => NewItemAsync(true)));
+        Sep();
         Tools.Children.Add(Tool("\uE8B7", "Files", "Ctrl+Shift+E", () => { ToggleFiles(); return Task.CompletedTask; }));
         Tools.Children.Add(Tool("", "Outline", "Ctrl+Shift+O", () => { ToggleOutline(); return Task.CompletedTask; }));
         Tools.Children.Add(Tool("\uE721", "SearchPanelMenu", "Ctrl+Shift+F", () => { ToggleSearch(); return Task.CompletedTask; }));
+        // the buttons so far make files and folders or show panes: they work in every mode, also GitHub preview and
+        // read-only, where the formatting buttons after them are greyed out (SyncSegments)
+        _panelTools.Clear();
+        _panelTools.UnionWith(Tools.Children.OfType<Button>());
         Sep();
 
         var h = Tool("", "Heading", null, () => Task.CompletedTask);
@@ -1036,7 +1047,8 @@ public partial class MainWindow : Window
         SegRead.IsChecked = _settings.ReadOnly;
         foreach (var (seg, on) in new[] { (SegEdit, !_settings.ReadOnly), (SegRead, _settings.ReadOnly) })
             if (seg.Content is StackPanel sp && sp.Children.Count == 2) sp.Children[1].Visibility = on ? Visibility.Visible : Visibility.Collapsed;
-        Tools.IsEnabled = _settings.Mode != "preview" && !_settings.ReadOnly;
+        bool editing = _settings.Mode != "preview" && !_settings.ReadOnly;
+        foreach (var b in Tools.Children.OfType<Button>()) b.IsEnabled = editing || _panelTools.Contains(b);
     }
 
     private async Task<string> SelectedTextAsync() =>

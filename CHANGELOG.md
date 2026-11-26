@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.4.0 — 2026-11-26
+
+- **New Markdown file and New folder**, the first two buttons of the toolbar, and two entries of the right-click
+  menu of every folder of the Files panel. Both are made on disk at once, in the folder selected in the tree (the
+  folder of the selected file, when a file is selected); with nothing selected, in `Documents\Vigia`, which is
+  created and added to the panel the first time. A free name is offered (*New document.md*, *New document 2.md*…); a
+  file without a Markdown extension gets `.md` and starts with its name as a heading. The new file opens at once; a
+  new folder stays selected, so the next file goes into it. Nothing is ever written over: a name already taken, or
+  one Windows would change or refuse, is refused with a message.
+- The row selected in the Files panel stays selected when the tree is rebuilt (a file saved, another program writing
+  in the folder): before, the selection went back to the open file every time.
+- The buttons that show panes (Files, Outline, Search) and the two new ones work in every mode: in the GitHub view
+  and in read only the whole toolbar was greyed out; now only the formatting buttons are.
+- Narrator reads the toolbar buttons by name (it read the character of their icon) and the rows of the Files panel
+  (it read nothing).
+
 ## 3.3.1 — 2026-11-25
 
 - **Spanish of Uruguay** in the spell check (`es-UY`, with the voseo: *tenés*, *querés*, *mirá*), on by default next

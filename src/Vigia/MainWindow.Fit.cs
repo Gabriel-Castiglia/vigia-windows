@@ -103,8 +103,8 @@ public partial class MainWindow
             if (k is Border) { pendingSep = menu.Items.Count > 0; continue; }
             if (k is not Button b) continue;
             if (pendingSep) { menu.Items.Add(new Separator()); pendingSep = false; }
-            var icon = new TextBlock { Text = b.Content as string ?? "", FontFamily = (FontFamily)FindResource("Gm.Icons"), FontSize = 14, HorizontalAlignment = HorizontalAlignment.Center };
-            var mi = new MenuItem { Header = b.ToolTip as string ?? "", Icon = icon, IsEnabled = Tools.IsEnabled };
+            var icon = new TextBlock { Text = b.Content as string ?? b.Tag as string ?? "", FontFamily = (FontFamily)FindResource("Gm.Icons"), FontSize = 14, HorizontalAlignment = HorizontalAlignment.Center };
+            var mi = new MenuItem { Header = b.ToolTip as string ?? "", Icon = icon, IsEnabled = b.IsEnabled };
             mi.Click += (_, _) => b.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, b));
             menu.Items.Add(mi);
         }
