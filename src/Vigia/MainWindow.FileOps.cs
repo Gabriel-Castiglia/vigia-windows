@@ -196,11 +196,13 @@ public partial class MainWindow
         return mi;
     }
 
-    /// <summary>F2 renames the selected row; Ctrl+Z / Ctrl+Y undo and redo. Called from OnTreeKey.</summary>
+    /// <summary>F2 renames the selected row, Delete deletes it (MainWindow.Delete.cs); Ctrl+Z / Ctrl+Y undo and redo
+    /// renames and moves. Called from OnTreeKey.</summary>
     private bool TreeFileKey(KeyEventArgs e)
     {
         var ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
         if (e.Key == Key.F2 && FilesTree.SelectedItem is TreeViewItem { Tag: string p }) { RenameNode(p); return true; }
+        if (e.Key == Key.Delete && FilesTree.SelectedItem is TreeViewItem { Tag: string d } && CanEditNode(d)) { _ = DeleteNodeAsync(d); return true; }
         if (ctrl && e.Key == Key.Z) { _ = UndoFileOp(); return true; }
         if (ctrl && e.Key == Key.Y) { _ = RedoFileOp(); return true; }
         return false;

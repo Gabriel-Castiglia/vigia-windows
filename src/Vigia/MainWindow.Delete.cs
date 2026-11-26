@@ -1,0 +1,125 @@
+// Vigia -- main window: deleting files and folders from the Files panel, to the Recycle Bin.
+// Copyright (C) 2026 Gabriel Castiglia. Licensed under the GNU GPL, version 2 only.
+// Date: November 26, 2026
+// SPDX-License-Identifier: GPL-2.0-only
+
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows.Controls;
+
+namespace Vigia;
+
+/// <summary>Delete (right-click → Delete, or the Delete key on a row of the tree): the file or folder goes to the
+/// Recycle Bin, where it can be restored. A question comes first, with "Don't ask again in this window": that box
+/// lasts only as long as this window; a new window, or Vigía started again, asks again. The tabs of what is deleted
+/// are closed, and it leaves Favourites and Open recent. The open folders themselves (the coloured blocks) are
+/// closed from their own menu, never deleted from here.</summary>
+public partial class MainWindow
+{
+    /// <summary>"Don't ask again in this window" was ticked. Never saved: only this window remembers it.</summary>
+    private bool _deleteNoAsk;
+
+    /// <summary>The self-test deletes for good instead, so its files never reach the user's Recycle Bin.</summary>
+    internal bool DeletePermanently;
+
+    private MenuItem DeleteEntry(string path)
+    {
+        var mi = MenuEntry(Strings.Plain("Delete"), () => _ = DeleteNodeAsync(path), enabled: CanEditNode(path));
+        mi.InputGestureText = Strings.Get("DeleteKey");
+        return mi;
+    }
+
+    /// <summary>Asks (unless told not to in this window) and deletes.</summary>
+    private async Task DeleteNodeAsync(string path)
+    {
+        try
+        {
+            if (!CanEditNode(path)) return;
+            bool isDir = Directory.Exists(path);
+            if (!isDir && !File.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return; }
+            var name = Path.GetFileName(path);
+            if (!_deleteNoAsk)
+            {
+                var text = string.Format(Strings.Get(isDir ? "DeleteAskFolder" : "DeleteAskFile"), name);
+                int choice = ChoiceDialog.Ask(this, text, new[] { Strings.Get("Cancel"), Strings.Plain("Delete") }, 0,
+                                              Strings.Get("DeleteNoAsk"), out bool noAsk);
+                if (choice != 1) return;
+                if (noAsk) _deleteNoAsk = true;
+            }
+            if (await DeletePath(path)) Flash(string.Format(Strings.Get(DeletePermanently ? "DeletedForGood" : "Deleted"), name));
+        }
+        catch (Exception ex) { LogError("DeleteNodeAsync", ex); }
+    }
+
+    /// <summary>Deletes without asking: closes the tabs of the file (or of the files inside the folder), sends it to
+    /// the Recycle Bin and takes it out of the lists. False, with a message, when it could not be done.</summary>
+    internal async Task<bool> DeletePath(string path)
+    {
+        bool isDir = Directory.Exists(path);
+        if (!isDir && !File.Exists(path)) { Flash(Strings.Get("ItemGone")); RefreshTree(); return false; }
+        bool Affected(string? p) => p != null && (PathCmp.Equals(p, path) || (isDir && IsUnder(p, path)));
+
+        // its tabs go first, without saving: what they hold is being thrown away, and it stays in the Recycle Bin
+        foreach (var t in _tabs.Where(t => Affected(t.Path)).ToList())
+        {
+            t.Dirty = false;
+            if (t == _cur) { _dirty = false; Watch(null); } else WatchTab(t, null);
+            await CloseTabAsync(t);
+        }
+        try
+        {
+            if (DeletePermanently) { if (isDir) Directory.Delete(path, true); else File.Delete(path); }
+            else ToRecycleBin(path);
+        }
+        catch (Exception e)
+        {
+            Flash(string.Format(Strings.Get("DeleteFailed"), Path.GetFileName(path), e.Message));
+            RefreshTree();
+            return false;
+        }
+
+        bool changed = false;
+        foreach (var list in new[] { _settings.Recent, _settings.RecentFolders, _settings.FavoriteFiles })
+            changed |= list.RemoveAll(p => Affected(p)) > 0;
+        if (changed) { _settings.Save(); BuildMenu(); }
+        RefreshTree();
+        ApplyFilesVisibility();
+        return true;
+    }
+
+    // ------------------------------------------------------------------ the Recycle Bin (SHFileOperation)
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct ShFileOp
+    {
+        public IntPtr Hwnd;
+        public uint Func;
+        public string From;
+        public string? To;
+        public ushort Flags;
+        public int Aborted;
+        public IntPtr NameMappings;
+        public string? ProgressTitle;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHFileOperation(ref ShFileOp op);
+
+    private const uint FO_DELETE = 3;
+    private const ushort FOF_SILENT = 0x4, FOF_NOCONFIRMATION = 0x10, FOF_ALLOWUNDO = 0x40, FOF_NOERRORUI = 0x400;
+
+    /// <summary>Moves a file or a folder (with everything in it) to the Recycle Bin, with no window of Explorer's
+    /// own; throws when Windows refuses (in use, no permission). A drive without a Recycle Bin (a network share)
+    /// deletes for good: that is how Windows does it there too.</summary>
+    private static void ToRecycleBin(string path)
+    {
+        var op = new ShFileOp
+        {
+            Func = FO_DELETE,
+            From = path + "\0\0",   // a list of paths, each ended by a NUL, the list by another
+            Flags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI,
+        };
+        int rc = SHFileOperation(ref op);
+        if (rc != 0 || op.Aborted != 0 || File.Exists(path) || Directory.Exists(path))
+            throw new IOException(string.Format(Strings.Get("DeleteRefused"), rc));
+    }
+}

@@ -66,6 +66,7 @@ public static class SelfTest
                 var dialogs = new (string Name, Window Dlg)[]
                 {
                     ("ask_save", ChoiceDialog.ForTest(w, string.Format(Strings.Get("AskSave"), "Plan.md"), new[] { Strings.Get("DontSave"), Strings.Get("Cancel"), Strings.Get("SaveBtn") }, 1)),
+                    ("ask_delete", ChoiceDialog.ForTest(w, string.Format(Strings.Get("DeleteAskFolder"), "Notes"), new[] { Strings.Get("Cancel"), Strings.Plain("Delete") }, 0, Strings.Get("DeleteNoAsk"))),
                     ("ask_changed", ChoiceDialog.ForTest(w, string.Format(Strings.Get("ChangedOnDisk"), "Plan.md"), new[] { Strings.Get("KeepMine"), Strings.Get("ReloadBtn") }, 0)),
                     ("ask_update", ChoiceDialog.ForTest(w, string.Format(Strings.Get("UpdateAsk"), "9.9.9", "3.2.0"), new[] { Strings.Get("UpdateLater"), Strings.Get("UpdateNotes"), Strings.Get("UpdateNow") }, 0)),
                     ("input_link", new InputDialog(w, Strings.Plain("Link"), new[] { (Strings.Get("LinkText"), "Vigía"), (Strings.Get("LinkUrl"), "https://") })),

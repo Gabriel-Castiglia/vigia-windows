@@ -17,8 +17,9 @@ namespace Vigia;
 public sealed class ChoiceDialog : Window
 {
     private int _choice;
+    private CheckBox? _check;
 
-    private ChoiceDialog(Window owner, string text, string[] buttons, int cancel)
+    private ChoiceDialog(Window owner, string text, string[] buttons, int cancel, string? checkLabel = null)
     {
         Owner = owner;
         WindowStyle = WindowStyle.None;
@@ -45,6 +46,12 @@ public sealed class ChoiceDialog : Window
             body.SetResourceReference(TextBlock.ForegroundProperty, "Gm.TextMuted");
             stack.Children.Add(body);
         }
+        if (checkLabel != null)   // a box under the text, such as "Don't ask again in this window"
+        {
+            _check = new CheckBox { Content = checkLabel, FontSize = 13, Margin = new Thickness(0, 0, 0, 16), FontFamily = (FontFamily)FindResource("Gm.Font") };
+            _check.SetResourceReference(Control.ForegroundProperty, "Gm.Text");
+            stack.Children.Add(_check);
+        }
         var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         for (int i = 0; i < buttons.Length; i++)
         {
@@ -68,13 +75,24 @@ public sealed class ChoiceDialog : Window
     }
 
     /// <summary>--render-chrome: the dialog built but not shown.</summary>
-    internal static Window ForTest(Window owner, string text, string[] buttons, int cancel) => new ChoiceDialog(owner, text, buttons, cancel);
+    internal static Window ForTest(Window owner, string text, string[] buttons, int cancel, string? checkLabel = null) =>
+        new ChoiceDialog(owner, text, buttons, cancel, checkLabel);
 
     /// <summary>Shows the question and returns the index of the button chosen (cancel on Escape or close).</summary>
     public static int Ask(Window owner, string text, string[] buttons, int cancel)
     {
         var d = new ChoiceDialog(owner, text, buttons, cancel);
         d.ShowDialog();
+        return d._choice;
+    }
+
+    /// <summary>The same with a check box under the text; <paramref name="isChecked"/> says whether it was ticked
+    /// (only when a button other than cancel was chosen).</summary>
+    public static int Ask(Window owner, string text, string[] buttons, int cancel, string checkLabel, out bool isChecked)
+    {
+        var d = new ChoiceDialog(owner, text, buttons, cancel, checkLabel);
+        d.ShowDialog();
+        isChecked = d._choice != cancel && d._check?.IsChecked == true;
         return d._choice;
     }
 }

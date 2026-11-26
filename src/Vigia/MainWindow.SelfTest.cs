@@ -252,6 +252,22 @@ public partial class MainWindow
                   (FilesTree.SelectedItem as System.Windows.Controls.TreeViewItem)?.Tag as string ?? "none");
             var inDefault = CreateNewItem(DefaultNewDir, "First", false);
             Check("new items: the default folder is made when needed", File.Exists(inDefault), inDefault);
+
+            // delete (right-click or the Delete key): the file's tab closes, it leaves Favourites; a folder goes whole.
+            // The self-test deletes for good: its files never reach the user's Recycle Bin.
+            DeletePermanently = true;
+            var gone = CreateNewItem(caseDir, "Gone", false);
+            OpenPath(gone);
+            await WaitFor(() => Task.FromResult(PathCmp.Equals(_path, gone)), 10);
+            ToggleFavorite(gone);
+            bool delFile = await DeletePath(gone);
+            Check("delete: a file, its tab closed and out of Favourites", delFile && !File.Exists(gone) && !PathCmp.Equals(_path, gone)
+                  && !_tabs.Any(x => PathCmp.Equals(x.Path, gone)) && !_settings.FavoriteFiles.Contains(gone, PathCmp), $"path {_path}");
+            var inside = CreateNewItem(newDir, "Inside", false);
+            bool delDir = await DeletePath(newDir);
+            Check("delete: a folder with what it holds", delDir && !Directory.Exists(newDir) && !File.Exists(inside), "");
+            Check("delete: the open folders themselves are not deleted from the tree", !CanEditNode(ops), "");
+            Check("delete: missing item refused", !await DeletePath(newDir), "");
             await NewDocAsync();
 
             // pictures: beside the document, in a parent folder (../), by an absolute path, and a ![[name]] found in

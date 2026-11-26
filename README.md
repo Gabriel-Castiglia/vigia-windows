@@ -41,6 +41,7 @@ follows tools that save by writing a new file and renaming it over the old one.
 - **Favourites**: a star on each file or folder row puts it in one list for all the open folders, at the top of the Files panel (drag to reorder); an optional RECENT block below it
 - **Search in the folders** (`Ctrl+Shift+F`): every Markdown file of the open folders, results by file and line, a click opens the file at the match; a pane you place like the others
 - **New Markdown file** and **New folder**: the first two buttons of the toolbar (or right-click a folder) make them on disk at once, in the folder selected in the tree, or in `Documents\Vigia` with nothing selected, and show them there; a new file opens at once
+- **Delete** files and folders from the Files panel (right-click or `Del`): to the Recycle Bin, after a question that can be silenced for the rest of that window
 - Rename and move files and folders from the Files panel (`F2`, or drag them with the padlock open), with undo and redo; the open document follows its file
 - Properties at the top of a file (front matter) shown as a folded box and as a table, saved as written
 - **Convert to TXT**: right-click a file in the Files panel; a .txt is written next to it, as the document reads in the GitHub view, and the Markdown file is not changed
@@ -99,6 +100,7 @@ que guardan escribiendo un archivo nuevo y renombrándolo encima del viejo.
 - **Favoritos**: una estrella en cada archivo o carpeta lo suma a una sola lista para todas las carpetas abiertas, arriba del panel de archivos (se reordena arrastrando); debajo, un bloque RECIENTES opcional
 - **Buscar en las carpetas** (`Ctrl+Shift+F`): todos los archivos Markdown de las carpetas abiertas, resultados por archivo y línea, un clic abre el archivo en la coincidencia; un panel que se ubica como los otros
 - **Nuevo archivo Markdown** y **Nueva carpeta**: los dos primeros botones de la barra (o clic derecho sobre una carpeta) los crean en el disco en el acto, en la carpeta seleccionada en el árbol, o en `Documentos\Vigia` si no hay nada seleccionado, y los muestran ahí; el archivo nuevo se abre enseguida
+- **Eliminar** archivos y carpetas desde el panel de archivos (clic derecho o `Supr`): a la Papelera de reciclaje, después de una pregunta que se puede callar por el resto de esa ventana
 - Cambiar nombre y mover archivos y carpetas desde el panel de archivos (`F2`, o arrastrándolos con el candado abierto), con deshacer y rehacer; el documento abierto sigue a su archivo
 - Propiedades al principio de un archivo (front matter) como un recuadro plegado y como una tabla, guardadas tal como estaban
 - **Convertir a TXT**: clic derecho en un archivo del panel de archivos; se escribe un .txt al lado, como se lee el documento en la vista GitHub, y el archivo Markdown no cambia
@@ -153,6 +155,7 @@ Markdown のタグは Vigía が書きます。文書は GitHub とまったく�
 - **お気に入り**: ファイルやフォルダーの行の星で、開いているすべてのフォルダーに共通の一覧に加え、ファイル パネルの先頭に表示します（ドラッグで並べ替え）。その下に任意の「最近使ったファイル」ブロック
 - **フォルダー内を検索**（`Ctrl+Shift+F`）: 開いているフォルダーのすべての Markdown ファイルを検索し、結果はファイルと行ごと。クリックで一致箇所を開きます。ほかと同じように配置できるパネルです
 - **新しい Markdown ファイル**と**新しいフォルダー**: ツール バーの最初の 2 つのボタン（またはフォルダーの右クリック）で、ツリーで選んだフォルダー（何も選んでいなければ `ドキュメント\Vigia`）にすぐ作られ、ツリーに表示されます。新しいファイルはすぐに開きます
+- ファイル パネルでファイルとフォルダーを**削除**（右クリックまたは `Del`）: 確認のあとごみ箱へ移動。確認はそのウィンドウの間だけ止められます
 - ファイル パネルでファイルとフォルダーの名前の変更と移動（`F2`、または錠前を開けてドラッグ）。元に戻す / やり直しができ、開いている文書はファイルに付いていきます
 - ファイル先頭のプロパティ（front matter）は折りたたんだ枠と表で表示し、書かれたとおりに保存します
 - **TXT に変換**: ファイル パネルでファイルを右クリック。GitHub 表示での見え方どおりの .txt を隣に書き出し、Markdown ファイルは変えません
@@ -179,7 +182,7 @@ Markdown のタグは Vigía が書きます。文書は GitHub とまったく�
 
 ## Build tools / Herramientas de compilación
 
-Vigía 3.4.0 was built and tested with / se compiló y probó con:
+Vigía 3.5.0 was built and tested with / se compiló y probó con:
 
 | Tool | Version |
 |---|---|
@@ -187,11 +190,11 @@ Vigía 3.4.0 was built and tested with / se compiló y probó con:
 | .NET SDK / runtime (self-contained, net10.0-windows) | 11.0.100 / 10.0.15 |
 | Microsoft.Web.WebView2 (NuGet) | 1.0.4370.26 |
 | WeCantSpell.Hunspell (NuGet) | 7.0.1 |
-| Node.js / npm (web bundle; not rebuilt for 3.4.0, the libraries did not change) | 26.12.1 / 11.20.0 |
+| Node.js / npm (web bundle; not rebuilt for 3.4.0 and 3.5.0, the libraries did not change) | 26.12.1 / 11.20.0 |
 | esbuild | 0.25.12 |
 | Inno Setup | 6.7.3 |
 | Microsoft Edge (manual PDFs) | 158.0.4370.33 |
-| Python (`-Art` only; not used for 3.4.0, the art did not change) | 3.13.17, Pillow 12.3.0, numpy 2.5.4, scipy 1.18.1, opencv-python 5.0.0 |
+| Python (`-Art` only; not used for 3.4.0 and 3.5.0, the art did not change) | 3.13.17, Pillow 12.3.0, numpy 2.5.4, scipy 1.18.1, opencv-python 5.0.0 |
 
 Web libraries / Bibliotecas web (exact versions in `_npm/package-lock.json`): TOAST UI Editor 3.2.3,
 marked 15.0.12, KaTeX 0.19.1, Mermaid 12.3.0, highlight.js 11.12.0, jsdiff 9.0.0, DOMPurify 3.5.0,

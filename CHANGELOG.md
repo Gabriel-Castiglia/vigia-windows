@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.5.0 — 2026-11-26
+
+- **Delete files and folders** from the Files panel: right-click → *Delete*, or the Delete key on the selected row.
+  They go to the Recycle Bin, where they can be restored (a folder with everything in it). A question comes first,
+  with *Don't ask again in this window*: ticked, that window stops asking until it closes; a new window, or Vigía
+  started again, asks again. The tabs of what is deleted close (without saving: their text is in the Recycle Bin),
+  and it leaves Favourites and Open recent. The open folders themselves are closed from their menu, as before,
+  never deleted from the tree.
+
 ## 3.4.0 — 2026-11-26
 
 - **New Markdown file and New folder**, the first two buttons of the toolbar, and two entries of the right-click
