@@ -79,7 +79,7 @@ public static class SelfTest
                     Save(card, Path.Combine(dir, $"{name}_{sfx}.png"), dark);
                     dlg.Close();
                 }
-                var about = new AboutDialog(w, "1.6.0");
+                var about = new AboutDialog(w, typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "");   // the version being built
                 Layout(about.Card);
                 Save(about.Card, Path.Combine(dir, $"about_{sfx}.png"), dark);
                 about.Close();

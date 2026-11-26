@@ -23,6 +23,7 @@ public sealed class AboutDialog : Window
         "Mermaid · KaTeX · gemoji — MIT\n" +
         "highlight.js · jsdiff — BSD-3-Clause\n" +
         "DOMPurify — MPL-2.0\n" +
+        "WeCantSpell.Hunspell — MIT · dictionaries: SCOWL en_US, RLA-ES\n" +
         ".NET (MIT) · Microsoft Edge WebView2";
 
     public FrameworkElement Card { get; }

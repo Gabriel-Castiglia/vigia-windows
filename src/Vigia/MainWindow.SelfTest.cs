@@ -268,6 +268,15 @@ public partial class MainWindow
             Check("delete: a folder with what it holds", delDir && !Directory.Exists(newDir) && !File.Exists(inside), "");
             Check("delete: the open folders themselves are not deleted from the tree", !CanEditNode(ops), "");
             Check("delete: missing item refused", !await DeletePath(newDir), "");
+            Check("delete: a network share has no Recycle Bin (asked and deleted for good), a fixed drive has one",
+                  !HasRecycleBin(@"\\server\share\a.md") && HasRecycleBin(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "x.md")), "");
+            bool wasLocked = _settings.TreeLocked;
+            _settings.TreeLocked = true; UpdateNewItemTools();
+            bool lockedOff = _newItemTools.All(b => !b.IsEnabled) && !DeleteEntry(notes).IsEnabled && !NewItemEntry(caseDir, false).IsEnabled;
+            _settings.TreeLocked = false; UpdateNewItemTools();
+            bool unlockedOn = _newItemTools.All(b => b.IsEnabled) && DeleteEntry(notes).IsEnabled && NewItemEntry(caseDir, true).IsEnabled;
+            _settings.TreeLocked = wasLocked; UpdateNewItemTools();
+            Check("new items and delete: only with the tree unlocked, greyed out while it is locked", lockedOff && unlockedOn && _newItemTools.Length == 2, "");
             await NewDocAsync();
 
             // pictures: beside the document, in a parent folder (../), by an absolute path, and a ![[name]] found in

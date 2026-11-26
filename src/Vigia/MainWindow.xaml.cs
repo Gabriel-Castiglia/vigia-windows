@@ -941,13 +941,16 @@ public partial class MainWindow : Window
         var newFile = Tool("\uE8A5", "NewMarkdown", null, () => NewItemAsync(false));
         newFile.Content = NewFileGlyph(); newFile.Tag = "\uE8A5";   // Tag: the glyph of its entry in the ⋯ menu
         Tools.Children.Add(newFile);
-        Tools.Children.Add(Tool("\uE8F4", "NewFolder", null, () => NewItemAsync(true)));
+        var newFolder = Tool("\uE8F4", "NewFolder", null, () => NewItemAsync(true));
+        Tools.Children.Add(newFolder);
+        _newItemTools = new[] { newFile, newFolder };
         Sep();
         Tools.Children.Add(Tool("\uE8B7", "Files", "Ctrl+Shift+E", () => { ToggleFiles(); return Task.CompletedTask; }));
         Tools.Children.Add(Tool("", "Outline", "Ctrl+Shift+O", () => { ToggleOutline(); return Task.CompletedTask; }));
         Tools.Children.Add(Tool("\uE721", "SearchPanelMenu", "Ctrl+Shift+F", () => { ToggleSearch(); return Task.CompletedTask; }));
         // the buttons so far make files and folders or show panes: they work in every mode, also GitHub preview and
-        // read-only, where the formatting buttons after them are greyed out (SyncSegments)
+        // read-only, where the formatting buttons after them are greyed out (SyncSegments); the first two also need
+        // the tree unlocked (UpdateNewItemTools)
         _panelTools.Clear();
         _panelTools.UnionWith(Tools.Children.OfType<Button>());
         Sep();
@@ -1049,6 +1052,7 @@ public partial class MainWindow : Window
             if (seg.Content is StackPanel sp && sp.Children.Count == 2) sp.Children[1].Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         bool editing = _settings.Mode != "preview" && !_settings.ReadOnly;
         foreach (var b in Tools.Children.OfType<Button>()) b.IsEnabled = editing || _panelTools.Contains(b);
+        UpdateNewItemTools();
     }
 
     private async Task<string> SelectedTextAsync() =>

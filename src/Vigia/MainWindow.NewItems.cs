@@ -15,12 +15,30 @@ using Shape = System.Windows.Shapes.Shape;
 namespace Vigia;
 
 /// <summary>The first two buttons of the toolbar, and two entries of the menu of every folder of the Files panel:
-/// New Markdown file and New folder. Both are made on disk at once, in the folder selected in the tree (the folder of
+/// New Markdown file and New folder, only with the tree unlocked (the padlock of the Files panel; locked, they are
+/// greyed out). Both are made on disk at once, in the folder selected in the tree (the folder of
 /// the selected file, when a file is selected); with nothing selected there, in Documents\Vigia, which is created
 /// and added to the panel the first time. The new item is shown in the tree; a new file is also opened, and a new
 /// folder stays selected, so the next file can go straight into it.</summary>
 public partial class MainWindow
 {
+    /// <summary>The two toolbar buttons, greyed out while the tree is locked (the padlock of the Files panel).</summary>
+    private Button[] _newItemTools = Array.Empty<Button>();
+
+    /// <summary>New files and folders, like deleting, need the tree unlocked: locked, the buttons and the menu
+    /// entries are greyed out and say why.</summary>
+    private void UpdateNewItemTools()
+    {
+        bool locked = _settings.TreeLocked;
+        foreach (var b in _newItemTools)
+        {
+            b.IsEnabled = !locked;
+            var name = System.Windows.Automation.AutomationProperties.GetName(b);
+            b.ToolTip = locked ? name + "\n" + Strings.Get("NeedsUnlock") : name;
+            ToolTipService.SetShowOnDisabled(b, true);
+        }
+    }
+
     /// <summary>Where new items go when nothing in the tree says otherwise. The self-test points it elsewhere.</summary>
     internal string DefaultNewDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Vigia");
 
@@ -80,6 +98,7 @@ public partial class MainWindow
     {
         try
         {
+            if (_settings.TreeLocked) { Flash(Strings.Get("NeedsUnlock")); return; }
             bool isDefault = false;
             var dir = inDir ?? NewItemDir(out isDefault);
             var stem = Strings.Plain(folder ? "NewFolderDefault" : "NewMarkdownDefault");
@@ -125,5 +144,14 @@ public partial class MainWindow
     }
 
     private MenuItem NewItemEntry(string dir, bool folder, bool enabled = true) =>
-        MenuEntry(Strings.Get(folder ? "NewFolder" : "NewMarkdown") + "…", () => _ = NewItemAsync(folder, dir), enabled: enabled);
+        LockedHelp(MenuEntry(Strings.Get(folder ? "NewFolder" : "NewMarkdown") + "…", () => _ = NewItemAsync(folder, dir), enabled: enabled && !_settings.TreeLocked));
+
+    /// <summary>A menu entry greyed out by the locked tree says why when the pointer rests on it.</summary>
+    private MenuItem LockedHelp(MenuItem mi)
+    {
+        if (!_settings.TreeLocked) return mi;
+        mi.ToolTip = Strings.Get("NeedsUnlock");
+        ToolTipService.SetShowOnDisabled(mi, true);
+        return mi;
+    }
 }

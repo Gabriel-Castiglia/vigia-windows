@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.5.1 — 2026-11-26
+
+- **New file, new folder and delete only with the tree unlocked** (the padlock at the top of the Files panel, as for
+  dragging): while it is locked the two toolbar buttons and the *New Markdown file…*, *New folder…* and *Delete*
+  entries of the right-click menu are greyed out, and the Delete key does nothing. Resting the pointer on one of
+  them says to unlock the tree to enable it. The padlock's tooltip names the three things it unlocks.
+- **A network folder or a USB stick has no Recycle Bin**: deleting there is for good, and the question now says so
+  (*Delete … for good?*), always, even after *Don't ask again in this window*. 3.5.0 said the item went to the
+  Recycle Bin there too.
+- About Vigía credits the spell check: WeCantSpell.Hunspell and its dictionaries (SCOWL en_US, RLA-ES), which came
+  with 3.3.0 but were missing from that window.
+
 ## 3.5.0 — 2026-11-26
 
 - **Delete files and folders** from the Files panel: right-click → *Delete*, or the Delete key on the selected row.

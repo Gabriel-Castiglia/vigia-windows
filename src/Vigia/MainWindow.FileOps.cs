@@ -31,7 +31,7 @@ public partial class MainWindow
     {
         FilesUndo.Click += async (_, _) => await UndoFileOp();
         FilesRedo.Click += async (_, _) => await RedoFileOp();
-        FilesLock.Click += (_, _) => { _settings.TreeLocked = !_settings.TreeLocked; _settings.Save(); UpdateFileOpButtons(); };
+        FilesLock.Click += (_, _) => { _settings.TreeLocked = !_settings.TreeLocked; _settings.Save(); UpdateFileOpButtons(); UpdateNewItemTools(); };
         FilesTree.AllowDrop = true;
         FilesTree.PreviewMouseLeftButtonDown += (_, e) =>
         {
@@ -202,7 +202,7 @@ public partial class MainWindow
     {
         var ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
         if (e.Key == Key.F2 && FilesTree.SelectedItem is TreeViewItem { Tag: string p }) { RenameNode(p); return true; }
-        if (e.Key == Key.Delete && FilesTree.SelectedItem is TreeViewItem { Tag: string d } && CanEditNode(d)) { _ = DeleteNodeAsync(d); return true; }
+        if (e.Key == Key.Delete && FilesTree.SelectedItem is TreeViewItem { Tag: string d } && CanEditNode(d) && !_settings.TreeLocked) { _ = DeleteNodeAsync(d); return true; }
         if (ctrl && e.Key == Key.Z) { _ = UndoFileOp(); return true; }
         if (ctrl && e.Key == Key.Y) { _ = RedoFileOp(); return true; }
         return false;
