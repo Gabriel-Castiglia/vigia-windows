@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+      <rect x="100" y="100" width="824" height="824" rx="185" fill="#3FA9E6"/>
+      <clipPath id="v1"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+      <g clip-path="url(#v1)" fill="#9FD4F3">
+        <polygon points="512,318 100,226 100,410"/>
+        <polygon points="512,318 924,226 924,410"/>
+      </g>
+      <g stroke="#111" stroke-width="22" stroke-linejoin="round" stroke-linecap="round">
+        <!-- tower -->
+        <polygon points="420,786 446,420 578,420 604,786" fill="#EEE8DA"/>
+      </g>
+      <clipPath id="v2"><polygon points="420,786 446,420 578,420 604,786"/></clipPath>
+      <g clip-path="url(#v2)" fill="#3FA9E6">
+        <rect x="400" y="480" width="224" height="58"/>
+        <rect x="400" y="600" width="224" height="58"/>
+        <rect x="400" y="720" width="224" height="58"/>
+      </g>
+      <g stroke="#111" stroke-width="22" stroke-linejoin="round" stroke-linecap="round" fill="none">
+        <polygon points="420,786 446,420 578,420 604,786"/>
+      </g>
+      <!-- plinth -->
+      <rect x="372" y="786" width="280" height="46" rx="6" fill="#EEE8DA" stroke="#111" stroke-width="22" stroke-linejoin="round"/>
+      <!-- door -->
+      <path d="M494 786 V 752 a18 18 0 0 1 36 0 V 786 Z" fill="#111"/>
+      <!-- gallery with railing -->
+      <rect x="418" y="396" width="188" height="28" rx="4" fill="#EEE8DA" stroke="#111" stroke-width="20"/>
+      <line x1="430" y1="396" x2="594" y2="396" stroke="#111" stroke-width="20"/>
+      <g stroke="#111" stroke-width="10" stroke-linecap="round">
+        <line x1="436" y1="362" x2="588" y2="362"/>
+        <line x1="440" y1="362" x2="440" y2="396"/><line x1="478" y1="362" x2="478" y2="396"/>
+        <line x1="512" y1="362" x2="512" y2="396"/><line x1="546" y1="362" x2="546" y2="396"/>
+        <line x1="584" y1="362" x2="584" y2="396"/>
+      </g>
+      <!-- lantern -->
+      <rect x="462" y="276" width="100" height="86" fill="#F7D774" stroke="#111" stroke-width="20" stroke-linejoin="round"/>
+      <g stroke="#111" stroke-width="9"><line x1="495" y1="276" x2="495" y2="362"/><line x1="529" y1="276" x2="529" y2="362"/></g>
+      <!-- dome -->
+      <path d="M450 278 Q 450 214 512 206 Q 574 214 574 278 Z" fill="#111"/>
+      <line x1="512" y1="206" x2="512" y2="178" stroke="#111" stroke-width="12" stroke-linecap="round"/>
+      <circle cx="512" cy="172" r="11" fill="#111"/>
+    </svg>

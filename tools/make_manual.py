@@ -277,7 +277,7 @@ maximized state it had when it was closed (centred if that place is no longer on
 <tr><td>Project page</td><td>github.com/Gabriel-Castiglia/vigia-windows</td></tr>
 <tr><td>Editor</td><td>TOAST UI Editor 3.2 (MIT)</td></tr>
 <tr><td>GitHub rendering</td><td>marked (GitHub Flavored Markdown), highlight.js, github-markdown-css (MIT); DOMPurify (MPL-2.0) cleans the HTML</td></tr>
-<tr><td>Icon</td><td>Lighthouse from Debenne's design for a lighthouse (c. 1815), The Metropolitan Museum of Art, CC0.</td></tr>
+<tr><td>Icon</td><td>A lighthouse drawn for Vigía (2026), under the GPL-2.0 like the rest.</td></tr>
 <tr><td>Settings</td><td><code>%APPDATA%\\Vigia\\settings.json</code> (a dedicated instance: <code>%APPDATA%\\Vigia\\profiles\\&lt;name&gt;</code>), with the previous save in <code>settings.json.bak</code>, read if the file itself is damaged; unexpected errors in <code>error.log</code> in the same folder.</td></tr>
 <tr><td>Source code</td><td><code>src/</code> in the project folder; build with <code>build.ps1</code>.</td></tr></table>
 <div class="note">The visual editor normalises some details when it writes Markdown (for example, <code>*</code> lists become
@@ -502,7 +502,7 @@ el estado maximizado que tenía al cerrarla (centrada si ese lugar ya no está e
 <tr><td>Página del proyecto</td><td>github.com/Gabriel-Castiglia/vigia-windows</td></tr>
 <tr><td>Editor</td><td>TOAST UI Editor 3.2 (MIT)</td></tr>
 <tr><td>Render GitHub</td><td>marked (GitHub Flavored Markdown), highlight.js, github-markdown-css (MIT); DOMPurify (MPL-2.0) limpia el HTML</td></tr>
-<tr><td>Ícono</td><td>Faro del proyecto de faro de Debenne (c. 1815), Museo Metropolitano de Arte, CC0.</td></tr>
+<tr><td>Ícono</td><td>Un faro dibujado para Vigía (2026), bajo la GPL-2.0 como el resto.</td></tr>
 <tr><td>Configuración</td><td><code>%APPDATA%\\Vigia\\settings.json</code> (una instancia dedicada: <code>%APPDATA%\\Vigia\\profiles\\&lt;nombre&gt;</code>), con el guardado anterior en <code>settings.json.bak</code>, que se lee si el archivo está dañado; los errores inesperados, en <code>error.log</code> en la misma carpeta.</td></tr>
 <tr><td>Código fuente</td><td><code>src/</code> en la carpeta del proyecto; se compila con <code>build.ps1</code>.</td></tr></table>
 <div class="note">El editor visual normaliza algunos detalles al escribir el Markdown (por ejemplo, las listas con <code>*</code>

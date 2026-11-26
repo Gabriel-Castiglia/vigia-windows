@@ -185,7 +185,7 @@ public static partial class Strings
         ["AboutLicenseLink"] = "ライセンスを表示",
         ["AboutCreditsTitle"] = "使用しているもの",
         ["AboutDicts"] = "辞書",
-        ["AboutIcon"] = "アイコン: Debenne による灯台の設計図（1815 年頃）の灯台 — メトロポリタン美術館 (CC0)",
+        ["AboutIcon"] = "アイコン: Vigía のために描いた灯台 (2026)、ほかと同じ GPL-2.0",
         ["AboutCopy"] = "情報をコピー",
         ["AboutCopied"] = "コピーしました ✓",
         ["TipVisual"] = "書式付きの文書を見ながら、ボタンで書けます。\nMarkdown は Vigía が書きます。",

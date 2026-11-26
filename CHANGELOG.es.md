@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) · Español · [日本語](CHANGELOG.ja.md)
 
+## 3.5.3 — 2026-11-27
+
+- **Ícono nuevo**: un faro dibujado plano, en crema con contorno negro sobre el color del tema, con sus rayas, la
+  galería, la linterna encendida y dos haces de luz. El grabado al que reemplaza, en tamaño chico, parecía una vela.
+  El ícono sigue el color elegido en *Ver → Tema*, en los doce colores, y también lo usan las imágenes del instalador.
+  El dibujo está en `assets/icon.svg`; los scripts que armaban el ícono viejo desde el grabado ya no están.
+
 ## 3.5.2 — 2026-11-26
 
 - **Favoritos: vuelve clic derecho → *Subir* / *Bajar*.** Desde la 3.2.1 el menú de clic derecho de una fila se arma

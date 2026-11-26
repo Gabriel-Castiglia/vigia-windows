@@ -14,7 +14,7 @@ namespace Vigia;
 
 /// <summary>
 /// The theme colours: each one is a background for the icon (icons/vigia_&lt;key&gt;.ico, made by
-/// tools/make_theme_icons.py — keep the keys in sync) and the highlight colour of the app
+/// the author's icon tool from assets/icon.svg — keep the keys in sync) and the highlight colour of the app
 /// (folder icons, check marks, the selected item) for the light and the dark chrome.
 /// </summary>
 public static class Accents

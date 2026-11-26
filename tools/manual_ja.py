@@ -221,7 +221,7 @@ GitHub プレビューでは、Web ページへのリンクはブラウザーで
 <tr><td>プロジェクトのページ</td><td>github.com/Gabriel-Castiglia/vigia-windows</td></tr>
 <tr><td>エディター</td><td>TOAST UI Editor 3.2 (MIT)</td></tr>
 <tr><td>GitHub の表示</td><td>marked (GitHub Flavored Markdown)、highlight.js、github-markdown-css (MIT)。DOMPurify (MPL-2.0) が HTML を無害化します</td></tr>
-<tr><td>アイコン</td><td>Debenne による灯台の設計図（1815 年頃）の灯台、メトロポリタン美術館、CC0。</td></tr>
+<tr><td>アイコン</td><td>Vigía のために描いた灯台 (2026)。ほかと同じく GPL-2.0。</td></tr>
 <tr><td>設定</td><td><code>%APPDATA%\\Vigia\\settings.json</code>（専用インスタンスは <code>%APPDATA%\\Vigia\\profiles\\&lt;名前&gt;</code>）。前回の保存は <code>settings.json.bak</code> にあり、ファイルが壊れているときはそちらを読みます。予期しないエラーは同じフォルダーの <code>error.log</code> に記録されます。</td></tr>
 <tr><td>ソース コード</td><td>プロジェクト フォルダーの <code>src/</code>。<code>build.ps1</code> でビルドします。</td></tr></table>
 <div class="note">ビジュアル エディターは Markdown を書くときに細部をいくつか正規化します（たとえば <code>*</code> のリストは

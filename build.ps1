@@ -1,8 +1,8 @@
 # Vigía — full build: web bundle, icon, manuals (PDF), self-contained publish, installer.
 # Usage:  powershell -ExecutionPolicy Bypass -File build.ps1 [-SkipNpm] [-Art]
 #   -SkipNpm  keep the web bundle in src/Vigia/wwwroot/lib as it is
-#   -Art      redraw the icons and the installer pictures (they are committed; needs Python with
-#             Pillow, numpy, scipy and opencv-python)
+#   -Art      redraw the installer pictures from the committed icons (needs Python with Pillow). The icons
+#             themselves are drawn from assets/icon.svg, in every theme colour, by the author's icon tool
 # The version comes from <Version> in src/Vigia/Vigia.csproj, the only place it is written.
 # Copyright (C) 2026 Gabriel Castiglia. Licensed under the GNU GPL, version 2 only.
 # Date: November 10, 2026
@@ -56,12 +56,9 @@ if (-not $SkipNpm) {
     Pop-Location
 }
 
-# 2. Icon and installer artwork (only with -Art: the drawn files are in the repository)
+# 2. Installer artwork (only with -Art: the drawn files are in the repository)
 if ($Art) {
-Step "icon + wizard art"
-python "$root/tools/make_icon.py" "$root/src/Vigia/Vigia.ico" "$root/assets/vigia_base.png" "232,96,44"
-# theme colours from that orange base; the default (sky) variant becomes Vigia.ico and assets/vigia.png
-python "$root/tools/make_theme_icons.py"
+Step "wizard art"
 python "$root/tools/make_wizard.py"
 }
 

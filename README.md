@@ -198,19 +198,19 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 ## Build tools / Herramientas de compilación / ビルド ツール
 
-Vigía 3.5.2 was built and tested with / se compiló y probó con / のビルドとテストに使ったもの:
+Vigía 3.5.3 was built and tested with / se compiló y probó con / のビルドとテストに使ったもの:
 
 | Tool | Version |
 |---|---|
 | Windows 11 Pro | x64 |
-| .NET SDK / runtime (self-contained, net10.0-windows) | 11.0.100 / 10.0.15 |
+| .NET SDK / runtime (self-contained, net10.0-windows) | 10.0.404 / 10.0.15 |
 | Microsoft.Web.WebView2 (NuGet) | 1.0.4370.26 |
 | WeCantSpell.Hunspell (NuGet) | 7.0.1 |
-| Node.js / npm (web bundle; not rebuilt for 3.4.0 to 3.5.2, the libraries did not change) | 26.12.1 / 11.20.0 |
+| Node.js / npm (web bundle; not rebuilt for 3.4.0 to 3.5.3, the libraries did not change) | 26.12.1 / 11.20.0 |
 | esbuild | 0.25.12 |
 | Inno Setup | 6.7.3 |
-| Microsoft Edge (manual PDFs) | 158.0.4370.33 |
-| Python (`-Art` only; not used for 3.4.0 to 3.5.2, the art did not change) | 3.13.17, Pillow 12.3.0, numpy 2.5.4, scipy 1.18.1, opencv-python 5.0.0 |
+| Google Chrome (manual PDFs) | 158.0.8127.89 |
+| Python (`-Art`: the installer pictures of 3.5.3) | 3.13.17, Pillow 12.3.0 |
 
 Web libraries / Bibliotecas web / Web ライブラリ (exact versions in `_npm/package-lock.json`): TOAST UI Editor 3.2.3,
 marked 15.0.12, KaTeX 0.19.1, Mermaid 12.3.0, highlight.js 11.12.0, jsdiff 9.0.0, DOMPurify 3.5.0,
@@ -243,4 +243,4 @@ Vigía はフリー ソフトウェアです。GNU 一般公衆利用許諾書 �
 | English dictionary (`dict/en.*`, SCOWL / Hunspell en_US 2020.12.07 with LibreOffice's 2024 apostrophe fix) | MIT-like / BSD, see `dict/LICENSE-en.txt` |
 | Spanish dictionaries (`dict/es.*`, `dict/es-UY.*`, RLA-ES 2.9) | GPL-3.0+ / LGPL-3.0+ / MPL-1.1+, see `dict/LICENSE-es.txt` |
 | Microsoft Edge WebView2 SDK | Microsoft WebView2 SDK license (redistributable); the WebView2 Runtime is a Windows system component |
-| Icon / ícono / アイコン: lighthouse from Debenne's design for a lighthouse (c. 1815), The Metropolitan Museum of Art | CC0 |
+| Icon / ícono / アイコン: a lighthouse drawn for Vigía (2026), in the flat style of a cream drawing with a black outline on the theme colour | GPL-2.0-only, like the rest |

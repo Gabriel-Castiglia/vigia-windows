@@ -2,6 +2,13 @@
 
 English · [Español](CHANGELOG.es.md) · [日本語](CHANGELOG.ja.md)
 
+## 3.5.3 — 2026-11-27
+
+- **A new icon**: a lighthouse drawn as a flat picture, cream with a black outline on the theme colour, with its
+  stripes, gallery, lit lantern and two beams. The engraving it replaces read as a candle at small sizes. The icon
+  still follows the colour chosen in *View → Theme*, in all twelve colours, and the installer pictures use it too.
+  The drawing is in `assets/icon.svg`; the scripts that made the old icon from the engraving are gone.
+
 ## 3.5.2 — 2026-11-26
 
 - **Favourites: right-click → *Move up* / *Move down* is back.** Since 3.2.1 the right-click menu of a row is built
