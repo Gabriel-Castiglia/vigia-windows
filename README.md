@@ -198,7 +198,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 ## Build tools / Herramientas de compilación / ビルド ツール
 
-Vigía 3.5.3 was built and tested with / se compiló y probó con / のビルドとテストに使ったもの:
+Vigía 3.5.4 was built and tested with / se compiló y probó con / のビルドとテストに使ったもの:
 
 | Tool | Version |
 |---|---|
@@ -206,14 +206,14 @@ Vigía 3.5.3 was built and tested with / se compiló y probó con / のビルド
 | .NET SDK / runtime (self-contained, net10.0-windows) | 10.0.404 / 10.0.15 |
 | Microsoft.Web.WebView2 (NuGet) | 1.0.4370.26 |
 | WeCantSpell.Hunspell (NuGet) | 7.0.1 |
-| Node.js / npm (web bundle; not rebuilt for 3.4.0 to 3.5.3, the libraries did not change) | 26.12.1 / 11.20.0 |
+| Node.js / npm (web bundle, rebuilt for 3.5.4) | 26.12.1 / 11.20.0 |
 | esbuild | 0.25.12 |
 | Inno Setup | 6.7.3 |
 | Google Chrome (manual PDFs) | 158.0.8127.89 |
-| Python (`-Art`: the installer pictures of 3.5.3) | 3.13.17, Pillow 12.3.0 |
+| Python (`-Art`: the installer pictures of 3.5.3; not used for 3.5.4) | 3.13.17, Pillow 12.3.0 |
 
 Web libraries / Bibliotecas web / Web ライブラリ (exact versions in `_npm/package-lock.json`): TOAST UI Editor 3.2.3,
-marked 15.0.12, KaTeX 0.19.1, Mermaid 12.3.0, highlight.js 11.12.0, jsdiff 9.0.0, DOMPurify 3.5.0,
+marked 18.3.0, KaTeX 0.19.1, Mermaid 12.3.0, highlight.js 11.12.0, jsdiff 9.0.0, DOMPurify 3.5.0,
 github-markdown-css 5.9.0, gemoji 8.1.0.
 
 ## License / Licencia / ライセンス

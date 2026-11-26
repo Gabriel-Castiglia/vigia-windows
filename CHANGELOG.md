@@ -2,6 +2,13 @@
 
 English · [Español](CHANGELOG.es.md) · [日本語](CHANGELOG.ja.md)
 
+## 3.5.4 — 2026-11-27
+
+- **The GitHub view follows GitHub in two more cases**, with marked 18.3.0 (it was 15.0.12): a loose tilde used as
+  "about" (`~2 min`, `~234 GB`) no longer strikes out the text up to the next tilde, and `**bold**` that starts with
+  code (`**`grep` and more**`) is bold instead of showing its asterisks. Checked by rendering 395 notes with both
+  versions: those were the only differences.
+
 ## 3.5.3 — 2026-11-27
 
 - **A new icon**: a lighthouse drawn as a flat picture, cream with a black outline on the theme colour, with its

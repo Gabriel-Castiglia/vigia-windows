@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) · Español · [日本語](CHANGELOG.ja.md)
 
+## 3.5.4 — 2026-11-27
+
+- **La vista GitHub sigue a GitHub en dos casos más**, con marked 18.3.0 (era la 15.0.12): una tilde suelta usada como
+  «más o menos» (`~2 min`, `~234 GB`) ya no tacha el texto hasta la tilde siguiente, y un `**negrita**` que empieza con
+  código (`**`grep` y algo más**`) se ve en negrita en vez de mostrar los asteriscos. Comprobado dibujando 395 notas
+  con las dos versiones: esas fueron las únicas diferencias.
+
 ## 3.5.3 — 2026-11-27
 
 - **Ícono nuevo**: un faro dibujado plano, en crema con contorno negro sobre el color del tema, con sus rayas, la
