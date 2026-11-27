@@ -243,7 +243,9 @@ public partial class MainWindow : Window
                 // A document must never be able to run a program: a Markdown file it may reach opens here, a
                 // picture opens in its viewer (from anywhere, as the page may show it), a PDF it may reach too;
                 // any other file it may reach (.exe, .bat, .lnk...) is only shown in Explorer; the rest is ignored.
-                if (IsPicture(local) && File.Exists(local)) { Process.Start(new ProcessStartInfo(local) { UseShellExecute = true }); return; }
+                // A picture on another computer only as the page may show it (PictureAllowed): asking whether it
+                // exists already reaches the server, with the user's credentials.
+                if (IsPicture(local) && PictureAllowed(local, _path) && File.Exists(local)) { Process.Start(new ProcessStartInfo(local) { UseShellExecute = true }); return; }
                 if (!InReach(local)) return;
                 if (Directory.Exists(local)) { Process.Start("explorer.exe", $"\"{local}\""); return; }
                 if (!File.Exists(local)) return;
@@ -306,11 +308,10 @@ public partial class MainWindow : Window
             if (!File.Exists(path))
             {
                 MessageBox.Show(this, string.Format(Strings.Get("NotFound"), path), "Vigía", MessageBoxButton.OK, MessageBoxImage.Warning);
-                _settings.Recent.Remove(path); BuildMenu();
+                _settings.Recent.RemoveAll(p => PathCmp.Equals(p, path)); _settings.Save(); BuildMenu();
                 return;
             }
             string text = ReadDocument(path);
-            var dir = Path.GetDirectoryName(path)!;
             await Js($"mdApp.load({Q(text)},{DocBaseJs(path)})");
             _path = path; _dirty = false; _isSample = false; _diskText = text;
             Watch(path);
@@ -544,10 +545,19 @@ public partial class MainWindow : Window
         var title = r.GetProperty("title").GetString() ?? "";
         bool dark = r.GetProperty("theme").GetString() == "dark";
         bool math = r.TryGetProperty("math", out var mv) && mv.GetBoolean();
-        string css = File.ReadAllText(Path.Combine(AppDir, "wwwroot", "lib", dark ? "github-markdown-dark.css" : "github-markdown-light.css"));
-        string hl = File.ReadAllText(Path.Combine(AppDir, "wwwroot", "lib", dark ? "hljs-dark.css" : "hljs-light.css"));
+        string css, hl;
+        try
+        {
+            css = File.ReadAllText(Path.Combine(AppDir, "wwwroot", "lib", dark ? "github-markdown-dark.css" : "github-markdown-light.css"));
+            hl = File.ReadAllText(Path.Combine(AppDir, "wwwroot", "lib", dark ? "hljs-dark.css" : "hljs-light.css"));
+        }
+        catch (Exception ex)   // a damaged install: said, not only logged (the export used to end in silence)
+        {
+            MessageBox.Show(this, string.Format(Strings.Get("ErrSave"), ex.Message), "Vigía", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
         string bg = dark ? "#0d1117" : "#ffffff";
-        string body = r.GetProperty("body").GetString() ?? "";
+        string body = EmbedPictures(r.GetProperty("body").GetString() ?? "", _path);
         string html = $$"""
             <!doctype html>
             <html lang="{{Strings.Lang}}">
@@ -584,7 +594,11 @@ public partial class MainWindow : Window
         switch (cmd)
         {
             case "new": await NewDocAsync(); break;
-            case "newwindow": Process.Start(new ProcessStartInfo(Environment.ProcessPath!, "--new-window") { UseShellExecute = true }); break;
+            // an extra window of this instance: a dedicated instance's own profile, or the main one
+            case "newwindow":
+                if (Settings.Profile != null) StartSelf("--profile", Settings.Profile, "--new-window");
+                else StartSelf("--new-window");
+                break;
             case "open":
                 var dlg = new OpenFileDialog
                 {
@@ -742,7 +756,7 @@ public partial class MainWindow : Window
 
     private MenuItem Item(string key, string? gesture, Func<Task> action, bool? check = null, bool enabled = true)
     {
-        var mi = new MenuItem { Header = Strings.Get(key), InputGestureText = gesture ?? "", IsEnabled = enabled, Icon = Glyph(key) };
+        var mi = new MenuItem { Header = Strings.Get(key), InputGestureText = Strings.Keys(gesture ?? ""), IsEnabled = enabled, Icon = Glyph(key) };
         if (check.HasValue) { mi.IsCheckable = true; mi.IsChecked = check.Value; }
         mi.Click += async (_, _) => await action();
         return mi;
@@ -939,7 +953,7 @@ public partial class MainWindow : Window
         {
             Content = glyph,
             Style = (Style)FindResource("Gm.ToolButton"),
-            ToolTip = Strings.Plain(tipKey) + (gesture != null ? "   " + gesture : ""),
+            ToolTip = Strings.Plain(tipKey) + (gesture != null ? "   " + Strings.Keys(gesture) : ""),
         };
         System.Windows.Automation.AutomationProperties.SetName(b, Strings.Plain(tipKey));   // Narrator says this, not the icon's character
         b.Click += async (_, _) => { await action(); if (_ready) await Js("mdApp.focus()"); };
@@ -1048,7 +1062,7 @@ public partial class MainWindow : Window
     internal static object SegTip(string nameKey, string tipKey, string gesture)
     {
         var p = new StackPanel { MaxWidth = 380 };
-        p.Children.Add(new TextBlock { Text = (Strings.Plain(nameKey) + "   " + gesture).TrimEnd(), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 3) });
+        p.Children.Add(new TextBlock { Text = (Strings.Plain(nameKey) + "   " + Strings.Keys(gesture)).TrimEnd(), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 3) });
         p.Children.Add(new TextBlock { Text = Strings.Get(tipKey), TextWrapping = TextWrapping.Wrap });
         return p;
     }

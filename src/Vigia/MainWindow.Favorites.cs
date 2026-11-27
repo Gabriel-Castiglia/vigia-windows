@@ -1,4 +1,4 @@
-// Vigia -- main window: favourite files.
+// Vigia -- main window: favourite files and folders, and the RECENT block of the Files panel.
 // Copyright (C) 2026 Gabriel Castiglia. Licensed under the GNU GPL, version 2 only.
 // Date: November 20, 2026
 // SPDX-License-Identifier: GPL-2.0-only
@@ -12,9 +12,9 @@ using System.Windows.Media;
 
 namespace Vigia;
 
-/// <summary>Favourites: files marked with a star, from any of the open folders (or from none: a file opened by
-/// itself can be one too). They make one list, the same for every tree, shown as the first block of the Files
-/// panel. The star sits at the right of each file row: filled and golden for a favourite, faint on hover for the
+/// <summary>Favourites: files and folders marked with a star, from any of the open folders (or from none: a file
+/// opened by itself can be one too). They make one list, the same for every tree, shown as the first block of the
+/// Files panel (folders first). The star sits at the right of each row: filled and golden for a favourite, faint on hover for the
 /// rest; a click on it, the row's menu or File → Favourite adds or takes the file out. A favourite that was
 /// renamed or moved from the panel follows its file; one deleted outside stays, greyed, until it is taken out.</summary>
 public partial class MainWindow
@@ -54,6 +54,9 @@ public partial class MainWindow
     /// <summary>A favourite is a folder (shown first, and opens like a tree) when it is one on disk, or when it is gone
     /// and its name has no Markdown extension.</summary>
     private static bool FavIsDir(string path) => SafeDirExists(path) || (!File.Exists(path) && !MdExtensions.Contains(Path.GetExtension(path)));
+
+    /// <summary>A favourite whose file or folder is gone.</summary>
+    private static bool FavMissing(string path) => !File.Exists(path) && !SafeDirExists(path);
 
     /// <summary>The favourites as shown: folders first, then files, each in the list's order.</summary>
     private List<string> FavoritesShown() =>
@@ -222,10 +225,11 @@ public partial class MainWindow
                     _settings.FavoriteFiles = _settings.FavoriteFiles.OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase).ToList();
                     _settings.Save(); RefreshTree();
                 }),
+                // a favourite folder that is there is not missing (File.Exists alone took every folder out)
                 MenuEntry(Strings.Get("FavRemoveMissing"), () =>
                 {
-                    _settings.FavoriteFiles.RemoveAll(p => !File.Exists(p)); _settings.Save(); RefreshTree(); ApplyFilesVisibility(); BuildMenu();
-                }, enabled: favs.Any(p => !File.Exists(p))),
+                    _settings.FavoriteFiles.RemoveAll(FavMissing); _settings.Save(); RefreshTree(); ApplyFilesVisibility(); BuildMenu();
+                }, enabled: favs.Any(FavMissing)),
                 new Separator(),
                 MenuEntry(Strings.Get("FavClear"), () =>
                 {

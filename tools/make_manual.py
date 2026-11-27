@@ -28,7 +28,10 @@ PALETTE = dict(
 )
 
 CSS = """
-@page { size: A4; margin: 18mm 17mm 20mm; }
+@page { size: A4; margin: 18mm 17mm 20mm;
+  @bottom-right { content: counter(page); font: 8.5pt "Segoe UI", "Yu Gothic UI", sans-serif; color: %(muted)s; }
+  @bottom-left { content: "Vigía"; font: 8.5pt "Segoe UI", sans-serif; color: %(muted)s; } }
+@page :first { @bottom-right { content: none; } @bottom-left { content: none; } }
 * { box-sizing: border-box; }
 body { font-family: "Segoe UI", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui, sans-serif; color: %(text)s; background: %(page)s;
   font-size: 10.5pt; line-height: 1.55; margin: 0; }
@@ -41,9 +44,11 @@ body { font-family: "Segoe UI", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui, 
 h2 { font-size: 17pt; color: %(accent)s; border-bottom: 2px solid %(accent_soft)s; padding-bottom: 4px; margin: 26px 0 10px; page-break-after: avoid; }
 h2.toc-head { display: flex; align-items: center; gap: 10px; }
 h2.toc-head img { width: 34px; height: 34px; }
+html[lang=ja] table:not(.menu-ref) td:first-child { min-width: 6.5em; }
 h3 { font-size: 12.5pt; margin: 18px 0 6px; color: %(text)s; page-break-after: avoid; }
 p { margin: 6px 0 9px; }
-table { border-collapse: collapse; width: 100%%; margin: 8px 0 14px; font-size: 9.8pt; page-break-inside: avoid; }
+table { border-collapse: collapse; width: 100%%; margin: 8px 0 14px; font-size: 9.8pt; }
+thead, tr:first-child { break-after: avoid; }
 th, td { border: 1px solid %(border)s; padding: 5px 9px; text-align: left; vertical-align: top; }
 th { background: %(chrome)s; }
 kbd { font-family: Consolas, monospace; font-size: 9pt; background: %(chrome)s; border: 1px solid %(border)s; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
@@ -51,9 +56,19 @@ code { font-family: Consolas, monospace; font-size: 9.2pt; background: %(chrome)
 figure { margin: 10px 0 16px; page-break-inside: avoid; text-align: center; }
 figure img { width: 100%%; border: 1px solid %(border)s; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
 figcaption { font-size: 9pt; color: %(muted)s; margin-top: 4px; }
+.figrow { display: flex; gap: 18px; justify-content: center; align-items: flex-start; break-inside: avoid; }
+.figrow figure { margin: 10px 0; flex: 0 1 auto; max-width: 290px; }
 .note { background: rgba(26,140,216,.08); border-left: 4px solid %(accent)s; padding: 8px 12px; margin: 10px 0; border-radius: 0 6px 6px 0; }
 .toc { columns: 2; font-size: 10pt; }
-.toc div { margin: 2px 0; }
+.toc div { margin: 2px 0; break-inside: avoid; }
+.toc a { color: inherit; text-decoration: none; }
+a { color: %(accent)s; }
+tr { break-inside: avoid; }
+table.menu-ref td.menu-top { width: 18%%; font-weight: 600; color: %(accent)s; }
+ul.menu-items { margin: 0; padding: 0; list-style: none; columns: 2; column-gap: 18px; }
+ul.menu-items li { break-inside: avoid; padding: 1px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+ul.menu-items li.sub { display: block; }
+ul.menu-items .sc { font-family: Consolas, monospace; font-size: 8.6pt; color: %(muted)s; white-space: nowrap; }
 .page { page-break-before: always; }
 """ % PALETTE
 
@@ -74,9 +89,9 @@ without memorising syntax.</p>
 <p>Run <code>Vigia-Setup-{v}.exe</code>. The installer is available in English, Spanish and Japanese and does <b>not</b> need
 administrator rights: it installs for the current user in <code>%LOCALAPPDATA%\\Programs\\Vigia</code>.</p>
 <table><tr><th>Option</th><th>What it does</th></tr>
-<tr><td>Desktop shortcut</td><td>Adds a Vigía icon to the desktop.</td></tr>
+<tr><td>Create a desktop shortcut</td><td>Adds a Vigía icon to the desktop.</td></tr>
 <tr><td>Open .md files with Vigía</td><td>Adds Vigía to <i>Open with</i> for .md / .markdown files, and makes it the handler for those files for the current user.</td></tr>
-<tr><td>Add "Open with Vigía" to folders</td><td>Right-click a folder (or the empty space inside one) in Explorer to open it in the Files panel. In Windows 11 it is under <i>Show more options</i>.</td></tr></table>
+<tr><td>Add "Open with Vigía" to folders in Explorer</td><td>Right-click a folder (or the empty space inside one) in Explorer to open it in the Files panel. In Windows 11 it is under <i>Show more options</i>.</td></tr></table>
 <p>Requirements: Windows 10 or 11 (64-bit) and Microsoft Edge WebView2 Runtime, which is already part of Windows 11.
 The .NET runtime is included; nothing else has to be installed.</p>
 <p>Up to version 1.1.1 the program was called <b>Quillforge</b>, and up to 2.2.1 <b>Gryphmark</b>. If one of them is installed, the
@@ -84,9 +99,10 @@ installer removes it, and Vigía copies its settings, recent files and recovery 
 <p>To uninstall: <i>Settings → Apps → Installed apps → Vigía → Uninstall</i>. Your settings in
 <code>%APPDATA%\\Vigia</code> are kept.</p>
 """),
-   ("The window", """
+   ("The window", f"""
+<figure><img src="{img('toolbar_en_light.png')}"><figcaption>The toolbar, here in the GitHub view: New Markdown file and New folder; Files, Outline and Search; the formatting buttons (greyed out in this view); the ⋯ menu that takes the buttons a narrow window cannot show; Autosave; Edit | Read only; the three views; the layout button.</figcaption></figure>
 <table><tr><th>Part</th><th>Use</th></tr>
-<tr><td>Menu bar</td><td>File, Edit, Format, View, Language and Help. All menus are available in English, Spanish and Japanese.</td></tr>
+<tr><td>Menu bar</td><td>File, Edit, Format, View, Language and Help. All menus are available in English, Spanish and Japanese; every entry is listed in <i>Menu reference</i>.</td></tr>
 <tr><td>Toolbar</td><td>New Markdown file and New folder, the buttons that show the Files, Outline and Search panes, and the formatting buttons (see below), which are greyed out in GitHub preview and in read only. At the right: the <i>Autosave</i> switch, <b>Edit | Read only</b>, the three views and the layout button.</td></tr>
 <tr><td>Tabs</td><td>One per open document (see <i>Tabs</i>).</td></tr>
 <tr><td>Document</td><td>The page itself, laid out with github.com's column width, font and line spacing.</td></tr>
@@ -133,15 +149,15 @@ changes) when you show it. Renaming or moving a file from the Files panel takes 
 <p>Like VS Code or Obsidian, Vigía shows folders as trees on the left: subfolders and Markdown files
 (<code>.md</code>, <code>.markdown</code>). You can have <b>several folders open at once</b>; each one is a block with its own
 pastel colour and a stripe on its left edge, so you see at a glance where one tree ends and the next begins. Click a file and it opens beside the trees.</p>
-<figure><img src="{img('files_panel_light.png')}" style="width:260px"><figcaption>Two folders open; the open file is marked.</figcaption></figure>
-<figure><img src="{img('files_favorites_en_light.png')}" style="width:260px"><figcaption>Favourites: one list for every folder, first in the panel; a file that is gone shows greyed.</figcaption></figure>
+<div class="figrow"><figure><img src="{img('files_panel_light.png')}" style="width:260px"><figcaption>Two folders open; the open file is marked.</figcaption></figure>
+<figure><img src="{img('files_favorites_en_light.png')}" style="width:260px"><figcaption>Favourites: one list for every folder, first in the panel; a file that is gone shows greyed.</figcaption></figure></div>
 <figure><img src="{img('layout_picker_en_light.png')}" style="width:500px"><figcaption>The layout button's panel: every layout drawn; a click applies it.</figcaption></figure>
 <table><tr><th>Action</th><th>How</th></tr>
-<tr><td>Open a folder</td><td>The <b>+</b> button of the panel, <i>File → Open folder…</i>, the <b>Open folder…</b> button of the empty panel, dropping a folder on the window, or right-clicking a folder in Explorer → <i>Open with Vigía</i> (installer option; in Windows 11 it is under <i>Show more options</i>). Each new folder is added below the others.</td></tr>
+<tr><td>Open a folder</td><td>The <b>+</b> button of the panel, <i>File → Open folder…</i>, the <b>Open folder…</b> button of the empty panel, dropping a folder on the window, or right-clicking a folder in Explorer → <i>Open with Vigía</i> (installer option; in Windows 11 it is under <i>Show more options</i>). Each new folder is added below the others. To close one, right-click its title → <b>Close this folder</b>; <i>File → Close all folders</i> empties the panel (nothing is deleted from the disk).</td></tr>
 <tr><td>Show / hide the panel</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>, the folder button of the toolbar (the third), or <i>View → Files panel</i>. It shares the sidebar with the outline: the files above, the outline below. Drag the right edge of the sidebar to make it wider, and the line between the two to change their heights; both are kept. Each dedicated instance keeps its own layout.</td></tr>
-<tr><td>Layout</td><td>The <b>layout button</b> at the right end of the toolbar is a small drawing of the current layout. A click opens a panel with the six layouts drawn: Files and Outline on the left (one above the other, or side by side), one on each side of the text (either way round), or both on the right. A click on a drawing applies it at once; below them, <b>Files</b>, <b>Outline</b> and <b>Search</b> turn each pane on or off and <b>Swap Files and Outline</b> trades their places. <i>View → Layout</i> has the same choices. Each layout keeps its own sidebar width: drag the edge of a sidebar and that layout remembers it.<br>You can also <b>drag a pane by its title</b> (FILES, CONTENTS or SEARCH) to an edge of the window: while you drag, both edges are outlined and the place the pane would take is filled in, with its name (<i>Outline on the right</i>, <i>Files below Outline</i>…). Near the other pane, its upper part puts the dragged one above it, the lower part below, the middle beside it. Let go to move it; let go in the middle of the window, or press <kbd>Esc</kbd>, to leave everything as it was.</td></tr>
+<tr><td>Layout</td><td>The <b>layout button</b> at the right end of the toolbar is a small drawing of the current layout. A click opens a panel with the six layouts drawn: Files and Outline on the left (one above the other, or side by side), one on each side of the text (either way round), or both on the right. A click on a drawing applies it at once; below them, <b>Files</b>, <b>Outline</b> and <b>Search</b> turn each pane on or off and <b>Swap Files and Outline</b> trades their places. <i>View → Layout</i> has the same choices, and <i>Choose a layout visually…</i> at its end opens the same panel. Each layout keeps its own sidebar width: drag the edge of a sidebar and that layout remembers it.<br>You can also <b>drag a pane by its title</b> (FILES, CONTENTS or SEARCH) to an edge of the window: while you drag, both edges are outlined and the place the pane would take is filled in, with its name (<i>Outline on the right</i>, <i>Files below Outline</i>…). Near the other pane, its upper part puts the dragged one above it, the lower part below, the middle beside it. Let go to move it; let go in the middle of the window, or press <kbd>Esc</kbd>, to leave everything as it was.</td></tr>
 <tr><td>Browse</td><td>Click a folder to open or close it; click a file to open it. <kbd>Enter</kbd> does the same on the selected row.</td></tr>
-<tr><td>Favourites</td><td>Each file and folder row has a <b>star</b> at its right: faint when the pointer is over the row, filled and golden for a favourite. A click on it (or right-click → <b>Add to favourites</b>, or <i>File → Favourite</i> for the open file) adds the file to <b>FAVOURITES</b>, the first block of the panel: one list for every open folder, with each file's folder in grey. Favourite folders come first and open like a tree. Drag a favourite onto another one to reorder the list (or right-click → move up / down, or remove it); right-click the block's title to sort the list A → Z, remove the files that no longer exist, or empty it (the files themselves are never touched). A favourite renamed or moved from the panel follows its file. A file opened from Favourites leaves the folder trees as they are: nothing opens or scrolls to it (opened from its folder, the tree follows it).</td></tr>
+<tr><td>Favourites</td><td>Each file and folder row has a <b>star</b> at its right: faint when the pointer is over the row, filled and golden for a favourite. A click on it (or right-click → <b>Add to favourites</b>, or <i>File → Favourite</i> for the open file) adds the file to <b>FAVOURITES</b>, the first block of the panel: one list for every open folder, with each file's folder in grey. Favourite folders come first and open like a tree. Drag a favourite onto another one to reorder the list (or right-click → move up / down, or remove it); right-click the block's title to sort the list A → Z, remove the files and folders that no longer exist (the entry is greyed out while none is missing), or empty it (the files themselves are never touched). A favourite renamed or moved from the panel follows its file. A file opened from Favourites leaves the folder trees as they are: nothing opens or scrolls to it (opened from its folder, the tree follows it).</td></tr>
 <tr><td>Search in the folders</td><td><i>View → Search in the folders</i>, the magnifier of the toolbar or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> shows the <b>SEARCH</b> pane. Type two letters or more: every Markdown file of the open folders (the files the trees show) is searched a moment after you stop typing. Results come grouped by file, each line with its number and the match in bold; a click opens the file at that very match, with the find bar showing it. <b>Aa</b> matches case. A search stops at 300 files or 5,000 matches (it says so: be more precise). It is a pane like the others: place it with the layout button or by dragging its title.</td></tr>
 <tr><td>Recent files</td><td>Off by default. <i>View → Recent files in the panel</i> (or the panel's ⋯ menu) adds a <b>RECENT</b> block under the favourites with the last eight files opened.</td></tr>
 <tr><td>Right-click a folder's title</td><td><i>New Markdown file…</i> and <i>New folder…</i>, <b>Pin to top</b> / <b>Unpin</b>, <b>Close this folder</b>, <b>Colour</b> (twelve pastel colours or <i>Automatic</i>), <b>Move up</b> / <b>Move down</b> (in opening order), open in a dedicated instance, desktop shortcut, show in folder, copy path, refresh.</td></tr>
@@ -169,8 +185,9 @@ to get a shortcut that always opens it that way. A dedicated instance is a separ
 recent files and size; its name is shown in the title bar. Opening it again brings that window to the front instead of starting another one.
 It starts with the language, theme and colour of the main window. (Technically: <code>Vigia.exe --profile "Name" "path"</code>;
 its settings live in <code>%APPDATA%\\Vigia\\profiles\\Name</code>.)</p>
-<p><i>Open in a new window</i> is different: it is an extra window of the main Vigía. It can be used freely, and it never writes over the
-main window's open folders or size.</p>
+<p>Inside a dedicated instance, <i>File → New window</i> and <i>Open in a new window</i> in the Files panel open another window of
+that same instance; in the main Vigía they open an extra window of the main one. An extra window can be used freely: it never writes
+over the first window's open folders or size.</p>
 <h3>What opens when Vigía starts</h3>
 <p>Choose it in <i>File → Folders at start</i> or in the <b>⋯</b> button of the panel:</p>
 <table><tr><th>Option</th><th>What happens</th></tr>
@@ -216,7 +233,9 @@ In GitHub preview, links to web pages open in your browser, links to other <code
 <code>#heading</code> links jump inside the document.</p>
 """),
    ("Export and print", """
-<p><b>Export to HTML</b> saves a single, self-contained HTML page with the GitHub style embedded — ready to e-mail or publish.</p>
+<p><b>Export to HTML</b> saves a single, self-contained HTML page with the GitHub style embedded — ready to e-mail or publish.
+The pictures of the document that are on this computer go inside the page, so it shows them anywhere; pictures from the web keep
+their address.</p>
 <p><b>Print / PDF</b> (<kbd>Ctrl</kbd>+<kbd>P</kbd>) prints the GitHub-style page. Choose <i>Save as PDF</i> as the printer to create a PDF.</p>
 """),
    ("Working tools", """
@@ -235,6 +254,7 @@ In GitHub preview, links to web pages open in your browser, links to other <code
 <tr><td>Spell check</td><td>On by default, with <b>English, Spanish and Japanese at once</b>: a word is right when any of those languages knows it, so a text that mixes languages is checked as a whole. Words no chosen language knows get a red wavy line, in the Visual and Markdown views; code (code blocks, <code>`inline code`</code>) and addresses are never checked. <i>View → Spell check</i> turns it on or off for every open tab (nothing typed is lost). <b>Right-click a marked word</b>: the suggestions come first (a click replaces the word), then <i>Ignore (until Vigía closes)</i>, which stops marking that word in every tab until you close Vigía, and <i>Add to dictionary</i>, which accepts it from then on (it is kept in this profile's settings). <i>View → Spell check languages and dictionary…</i> (also at the end of that right-click menu) turns the checking on or off, picks the languages (tick several), lists the words added to the dictionary so you can select them and <i>Remove</i> them, and <i>Add a language…</i> takes any Hunspell dictionary (a <code>.dic</code> file with its <code>.aff</code> next to it, as LibreOffice and Firefox use) for another language. Vigía brings its own English and Spanish dictionaries, so nothing has to be installed in Windows; Spanish comes twice, the general one and the Spanish of Uruguay, which knows the voseo (<i>tenés</i>, <i>mirá</i>), and both are on by default. There is no Japanese spelling dictionary (no program checks Japanese spelling): Japanese text is never marked, and the English or Spanish words inside it are checked.</td></tr>
 <tr><td>One window per file</td><td>Opening a .md while Vigía is running brings the existing window forward, with the file in a tab, instead of starting a second copy. <i>File → New window</i> still opens another one.</td></tr>
 <tr><td>Updates</td><td>Vigía checks once a day for a new version (once for all the dedicated instances); <i>Help → Check for updates</i> does it on demand. When there is one, a single question — <b>Update now</b>, <b>What's new</b> or <b>Later</b> — and the rest happens by itself: the release's checksums must carry the author's digital signature, and the installer is downloaded and checked against them (a release without a valid signature, or an installer that does not match, is refused and never run), every Vigía window closes (saving first, or asking if it cannot), the new version installs in silence with the same options, and the windows open again, each with its profile, its files and its tabs. If a window is not closed (its question answered with <i>Cancel</i>), nothing is installed and the others come back.</td></tr>
+<tr><td>Markdown guide</td><td><i>Help → Markdown guide (GitHub)</i> opens GitHub's own guide to the Markdown syntax in your browser, in the language of the menus.</td></tr>
 <tr><td>About</td><td><i>Help → About Vigía</i> shows the version, author, license and credits. <i>Copy info</i> copies the version details, handy for reporting a problem.</td></tr>
 <tr><td>Sample document</td><td>A sample that shows every feature in the three views. It opens on the first start and from <i>Help → Sample document</i>, and it is pinned at the top of <i>File → Open recent</i>; <i>Hide sample</i>, right below it, removes it from that list, and <i>Help → Show sample in Open recent</i> brings it back. It opens as an untitled copy, so the original is never overwritten, and it changes language together with the menus.</td></tr></table>
 <h3>GitHub extras</h3>
@@ -249,11 +269,11 @@ The first time, Vigía follows the Windows language.</p>
 the icon and the highlights. The chosen colour becomes the background of the icon everywhere — window, taskbar, desktop and
 Start-menu shortcuts, <code>.md</code> files — and colours the folders of the Files panel, the check marks and the selected item.
 The default is sky blue. Shortcuts you made with an icon of your own are not changed.</p>
-<figure><img src="{img('theme_en_light.png')}" style="width:520px"><figcaption>The theme window.</figcaption></figure>
+<figure><img src="{img('theme_en_light.png')}" style="width:420px"><figcaption>The theme window.</figcaption></figure>
 <p>Zoom with the <b>zoom bar</b> at the right of the status bar (−, slider, +; click the percentage to go back to 100 %), <kbd>Ctrl</kbd> + mouse wheel, <kbd>Ctrl</kbd>+<kbd>+</kbd>,
 <kbd>Ctrl</kbd>+<kbd>-</kbd> and <kbd>Ctrl</kbd>+<kbd>0</kbd>. Language, theme, mode and zoom are remembered, and the window opens again with the size, place and
 maximized state it had when it was closed (centred if that place is no longer on a screen).</p>
-<figure><img src="{img('preview_dark_es.png')}"><figcaption>GitHub dark theme.</figcaption></figure>
+<figure><img src="{img('preview_dark_en.png')}"><figcaption>GitHub dark theme.</figcaption></figure>
 """),
    ("Keyboard shortcuts", """
 <table><tr><th>Keys</th><th>Action</th><th>Keys</th><th>Action</th></tr>
@@ -267,7 +287,28 @@ maximized state it had when it was closed (centred if that place is no longer on
 <tr><td><kbd>Alt</kbd>+<kbd>F4</kbd></td><td>Close window (every tab)</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Search in the folders</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>H</kbd></td><td>Find / Replace</td><td><kbd>F3</kbd> / <kbd>Shift</kbd>+<kbd>F3</kbd></td><td>Next / previous match</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd></td><td>Outline</td><td><kbd>Esc</kbd></td><td>Close find bar</td></tr>
-<tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Files panel</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></td><td>Read only / Edit</td></tr></table>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Files panel</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></td><td>Read only / Edit</td></tr>
+<tr><td><kbd>F2</kbd></td><td>Rename (Files panel)</td><td><kbd>Del</kbd></td><td>Delete (Files panel, tree unlocked)</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Undo / redo a rename or move (in the tree)</td><td><kbd>Ctrl</kbd> + wheel</td><td>Zoom</td></tr></table>
+"""),
+   ("Troubleshooting", """
+<table><tr><th>What happens</th><th>What to do</th></tr>
+<tr><td>At start: <i>Microsoft Edge WebView2 Runtime is required</i></td><td>Vigía draws its pages with WebView2, part of Windows 11 and of an up-to-date Windows 10. Install the Evergreen runtime from <code>https://go.microsoft.com/fwlink/p/?LinkId=2124703</code> and start Vigía again.</td></tr>
+<tr><td>The setup does not run on this PC</td><td>Vigía is built for Windows 10/11 on x64 (64-bit Intel or AMD) only; there is no build for ARM processors.</td></tr>
+<tr><td>Windows SmartScreen warns about the setup</td><td>If you downloaded it from the project's Releases page, choose <i>More info → Run anyway</i>. Never run a copy of unknown origin.</td></tr>
+<tr><td>The formatting buttons are grey</td><td>They work in the Visual and Markdown views with <b>Edit</b> chosen. In the GitHub view, or in <b>Read only</b>, they are greyed out on purpose: press <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>.</td></tr>
+<tr><td>Typing does nothing</td><td>The document is in <b>Read only</b>; the status bar says so. Choose <b>Edit</b> in the toolbar or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>.</td></tr>
+<tr><td><i>New Markdown file</i>, <i>New folder</i> or <i>Delete</i> are grey</td><td>The tree is locked. Click the <b>padlock</b> at the top of the Files panel; click it again when you are done.</td></tr>
+<tr><td><i>… was changed by another program. Reload it and lose your unsaved changes?</i></td><td>Another program wrote the file while you had unsaved changes. <b>Reload</b> shows its version (yours is lost); <b>Keep my changes</b> leaves your text, and the next save writes it over the other version.</td></tr>
+<tr><td>A folder of the panel says <i>not available</i></td><td>The folder was deleted or renamed, or its network drive or USB stick is not there. The block comes back by itself when the folder does; close it from its right-click menu if it is gone for good.</td></tr>
+<tr><td>A picture shows only its name in a dashed box</td><td>The file is not where the link says. Pictures on another computer (<code>\\\\server\\share</code>) show only when that folder is the document's or one open in the Files panel: open it in the panel.</td></tr>
+<tr><td>A link opens Explorer instead of the file</td><td>On purpose: links open only web pages, e-mail, Markdown files, pictures and PDFs. Any other file is shown in Explorer, never run.</td></tr>
+<tr><td>Japanese words are never underlined</td><td>There is no Japanese spelling dictionary; the English and Spanish words in a Japanese text are checked. Marks show in the Visual and Markdown views, not in the GitHub view.</td></tr>
+<tr><td>Vigía closed unexpectedly</td><td>Start it again: it offers to recover each unsaved document. The error is written to <code>error.log</code> in the settings folder; <i>Help → About Vigía → Copy info</i> copies the version details for a report.</td></tr>
+<tr><td>An update was refused</td><td>If the signature or the checksum of the downloaded installer does not match, nothing is installed and the installer is deleted: try again later, or install from the Releases page. <i>Another Vigía window did not close</i>: close it (or answer its question) and check again.</td></tr>
+<tr><td><i>Could not check for updates</i></td><td>The check needs to reach github.com. Try again when the connection works; Vigía also checks by itself once a day.</td></tr>
+<tr><td><i>Open with Vigía</i> is missing from a folder's right-click menu</td><td>In Windows 11 it is under <i>Show more options</i>. If it is not there either, run the setup again and tick <i>Add "Open with Vigía" to folders in Explorer</i>.</td></tr>
+<tr><td>The settings look wrong</td><td>A damaged <code>settings.json</code> is replaced by its previous save (<code>settings.json.bak</code>) by itself. To start from scratch, close every Vigía window and rename the folder <code>%APPDATA%\\Vigia</code>; a dedicated instance has its own in <code>profiles</code>.</td></tr></table>
 """),
    ("Technical information", """
 <table><tr><th>Item</th><th>Detail</th></tr>
@@ -275,17 +316,17 @@ maximized state it had when it was closed (centred if that place is no longer on
 <tr><td>License</td><td>GNU GPL version 2 only (GPL-2.0-only) — free software, no warranty. Full text: <code>LICENSE.txt</code> in the program folder.</td></tr>
 <tr><td>Platform</td><td>Windows 10/11 on x64 (64-bit Intel or AMD); there is no ARM build. .NET 10 (WPF, self-contained) + Microsoft Edge WebView2</td></tr>
 <tr><td>Project page</td><td>github.com/Gabriel-Castiglia/vigia-windows</td></tr>
-<tr><td>Editor</td><td>TOAST UI Editor 3.2 (MIT)</td></tr>
-<tr><td>GitHub rendering</td><td>marked (GitHub Flavored Markdown), highlight.js, github-markdown-css (MIT); DOMPurify (MPL-2.0) cleans the HTML</td></tr>
+<tr><td>Command line</td><td><code>Vigia.exe [file or folder…]</code> opens them (a folder goes to the Files panel); <code>--profile "Name"</code> opens a dedicated instance; <code>--new-window</code> an extra window.</td></tr>
+<tr><td>Third-party components</td><td>TOAST UI Editor 3.2, ProseMirror, marked (GitHub Flavored Markdown), github-markdown-css, Mermaid, KaTeX, gemoji, WeCantSpell.Hunspell, .NET / WPF (MIT); highlight.js, jsdiff (BSD-3-Clause); DOMPurify (MPL-2.0), which cleans the HTML; Microsoft Edge WebView2 SDK (Microsoft licence). Dictionaries: SCOWL / Hunspell en_US (MIT-like / BSD) and RLA-ES (GPL / LGPL / MPL), with their licences in the <code>dict</code> folder of the program.</td></tr>
 <tr><td>Icon</td><td>A lighthouse drawn for Vigía (2026), under the GPL-2.0 like the rest.</td></tr>
 <tr><td>Settings</td><td><code>%APPDATA%\\Vigia\\settings.json</code> (a dedicated instance: <code>%APPDATA%\\Vigia\\profiles\\&lt;name&gt;</code>), with the previous save in <code>settings.json.bak</code>, read if the file itself is damaged; unexpected errors in <code>error.log</code> in the same folder.</td></tr>
-<tr><td>Source code</td><td><code>src/</code> in the project folder; build with <code>build.ps1</code>.</td></tr></table>
+<tr><td>Source code</td><td>On the project page (<code>src/</code>); <code>build.ps1</code> builds the program, the manuals and the installer.</td></tr></table>
 <div class="note">The visual editor normalises some details when it writes Markdown (for example, <code>*</code> lists become
 <code>-</code>). The text and the way GitHub displays it do not change.</div>
 """),
   ]),
  "es": dict(
-  title="Manual de usuario", tag="Escribí Markdown en forma visual. Miralo como en GitHub.", lang="es",
+  title="Manual de usuario", tag="Escribe Markdown en forma visual. Míralo como en GitHub.", lang="es",
   toc="Contenido",
   sections=[
    ("Qué es Vigía", f"""
@@ -297,12 +338,12 @@ sin aprenderte la sintaxis.</p>
 <figure><img src="{img('visual_light_es.png')}"><figcaption>Editor visual: formato con la barra de herramientas, sin etiquetas a la vista.</figcaption></figure>
 """),
    ("Instalación", """
-<p>Ejecutá <code>Vigia-Setup-{v}.exe</code>. El instalador está en inglés, español y japonés y <b>no</b> pide permisos de
+<p>Ejecuta <code>Vigia-Setup-{v}.exe</code>. El instalador está en inglés, español y japonés y <b>no</b> pide permisos de
 administrador: instala para el usuario actual en <code>%LOCALAPPDATA%\\Programs\\Vigia</code>.</p>
 <table><tr><th>Opción</th><th>Qué hace</th></tr>
-<tr><td>Acceso directo en el escritorio</td><td>Pone el ícono de Vigía en el escritorio.</td></tr>
-<tr><td>Abrir los .md con Vigía</td><td>Agrega Vigía a <i>Abrir con</i> para los .md / .markdown y lo deja como programa para esos archivos en el usuario actual.</td></tr>
-<tr><td>Agregar «Abrir con Vigía» a las carpetas</td><td>Clic derecho sobre una carpeta (o sobre el espacio vacío dentro de ella) en el Explorador para abrirla en el panel de archivos. En Windows 11 está en <i>Mostrar más opciones</i>.</td></tr></table>
+<tr><td>Crear un acceso directo en el escritorio</td><td>Pone el ícono de Vigía en el escritorio.</td></tr>
+<tr><td>Abrir los archivos .md con Vigía</td><td>Agrega Vigía a <i>Abrir con</i> para los .md / .markdown y lo deja como programa para esos archivos en el usuario actual.</td></tr>
+<tr><td>Agregar «Abrir con Vigía» a las carpetas en el Explorador</td><td>Clic derecho sobre una carpeta (o sobre el espacio vacío dentro de ella) en el Explorador para abrirla en el panel de archivos. En Windows 11 está en <i>Mostrar más opciones</i>.</td></tr></table>
 <p>Requisitos: Windows 10 u 11 de 64 bits y Microsoft Edge WebView2 Runtime, que ya viene con Windows 11.
 El runtime de .NET va incluido; no hay que instalar nada más.</p>
 <p>Hasta la versión 1.1.1 el programa se llamaba <b>Quillforge</b>, y hasta la 2.2.1, <b>Gryphmark</b>. Si una de ellas está instalada,
@@ -310,9 +351,10 @@ el instalador la quita y Vigía copia su configuración, los recientes y los bor
 <p>Para desinstalar: <i>Configuración → Aplicaciones → Aplicaciones instaladas → Vigía → Desinstalar</i>. La
 configuración en <code>%APPDATA%\\Vigia</code> se conserva.</p>
 """),
-   ("La ventana", """
+   ("La ventana", f"""
+<figure><img src="{img('toolbar_es_light.png')}"><figcaption>La barra de herramientas, aquí en la vista GitHub: Nuevo archivo Markdown y Nueva carpeta; archivos, índice y búsqueda; los botones de formato (en gris en esta vista); el menú ⋯, que se lleva los botones que no entran en una ventana angosta; Autoguardado; Editar | Solo lectura; las tres vistas; el botón de disposición.</figcaption></figure>
 <table><tr><th>Parte</th><th>Para qué sirve</th></tr>
-<tr><td>Menú</td><td>Archivo, Edición, Formato, Ver, Idioma y Ayuda. Todos los menús están en inglés, español y japonés.</td></tr>
+<tr><td>Menú</td><td>Archivo, Edición, Formato, Ver, Idioma y Ayuda. Todos los menús están en inglés, español y japonés; cada entrada figura en <i>Referencia de menús</i>.</td></tr>
 <tr><td>Barra de herramientas</td><td>Nuevo archivo Markdown y Nueva carpeta, los botones que muestran los paneles de archivos, índice y búsqueda, y los botones de formato (ver más abajo), que quedan en gris en la vista GitHub y en solo lectura. A la derecha: el interruptor <i>Autoguardado</i>, <b>Editar | Solo lectura</b>, las tres vistas y el botón de disposición.</td></tr>
 <tr><td>Pestañas</td><td>Una por documento abierto (ver <i>Pestañas</i>).</td></tr>
 <tr><td>Documento</td><td>La página misma, con el ancho de columna, la letra y el interlineado de github.com.</td></tr>
@@ -320,65 +362,65 @@ configuración en <code>%APPDATA%\\Vigia</code> se conserva.</p>
 <p>La barra de título muestra el nombre del archivo; un <b>●</b> delante indica que hay cambios sin guardar.</p>
 """),
    ("Tres formas de ver un documento", f"""
-<p>Se cambia con los tres botones del extremo derecho de la barra — <b>Visual · Markdown · GitHub</b> —, con el menú <i>Ver</i> o con los atajos. Pasá el mouse sobre un botón para ver qué hace.</p>
+<p>Se cambia con los tres botones del extremo derecho de la barra — <b>Visual · Markdown · GitHub</b> —, con el menú <i>Ver</i> o con los atajos. Pasa el mouse sobre un botón para ver qué hace.</p>
 <table><tr><th>Botón</th><th>Atajo</th><th>Qué ves</th></tr>
-<tr><td><b>Visual</b><br><small>Editor visual</small></td><td><kbd>Ctrl</kbd>+<kbd>1</kbd></td><td>El documento con formato. Escribís y usás los botones; el Markdown se genera solo.</td></tr>
+<tr><td><b>Visual</b><br><small>Editor visual</small></td><td><kbd>Ctrl</kbd>+<kbd>1</kbd></td><td>El documento con formato. Escribes y usas los botones; el Markdown se genera solo.</td></tr>
 <tr><td><b>Markdown</b><br><small>Código Markdown</small></td><td><kbd>Ctrl</kbd>+<kbd>2</kbd></td><td>El Markdown a la izquierda y la vista previa en vivo a la derecha. Para ver o tocar las etiquetas.</td></tr>
 <tr><td><b>GitHub</b><br><small>Vista GitHub</small></td><td><kbd>Ctrl</kbd>+<kbd>3</kbd></td><td>Página de solo lectura igual a GitHub, con colores de código, listas de tareas y enlaces que funcionan.</td></tr></table>
 <figure><img src="{img('source_light_es.png')}"><figcaption>Código Markdown con vista previa en vivo.</figcaption></figure>
 <figure><img src="{img('preview_light_es.png')}"><figcaption>Vista GitHub (tema claro).</figcaption></figure>
 <h3>Solo lectura</h3>
-<p>Cuando sólo querés leer un documento, elegí <b>Solo lectura</b> en el selector <b>Editar | Solo lectura</b>, a la izquierda de los botones de vista
+<p>Cuando solo quieres leer un documento, elige <b>Solo lectura</b> en el selector <b>Editar | Solo lectura</b>, a la izquierda de los botones de vista
 (también <i>Ver → Solo lectura</i> o <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd>). El texto queda bloqueado en todas las vistas: las teclas, pegar, arrastrar y soltar
-y las casillas de tareas no hacen nada, y los botones de formato quedan en gris. Igual podés leer, seleccionar, copiar, buscar y cambiar de vista.
-Si escribís, la barra de estado te recuerda cómo desbloquearlo. Elegí <b>Editar</b> para volver a escribir; Vigía recuerda tu elección.</p>
+y las casillas de tareas no hacen nada, y los botones de formato quedan en gris. Aun así puedes leer, seleccionar, copiar, buscar y cambiar de vista.
+Si escribes, la barra de estado te recuerda cómo desbloquearlo. Elige <b>Editar</b> para volver a escribir; Vigía recuerda tu elección.</p>
 """),
    ("Pestañas", f"""
 <p>Vigía tiene <b>varios documentos en una sola ventana</b>, uno por pestaña, en la franja que está arriba del texto. Cada pestaña tiene su propio
-editor: conserva su deshacer, el cursor y la posición mientras mirás otra. Un punto en la pestaña indica cambios sin guardar; la barra de título
+editor: conserva su deshacer, el cursor y la posición mientras miras otra. Un punto en la pestaña indica cambios sin guardar; la barra de título
 y la de estado muestran el documento de la pestaña en la que estás, y el índice la sigue.</p>
 <figure><img src="{img('tabs_es_light.png')}" style="width:520px"><figcaption>Cuatro pestañas; la segunda tiene cambios sin guardar.</figcaption></figure>
 <table><tr><th>Acción</th><th>Cómo</th></tr>
-<tr><td>Abrir un archivo en una pestaña</td><td>Cualquier forma de abrir un archivo: un clic en el panel de archivos, un favorito, <i>Archivo → Abrir…</i> (elegí varios archivos juntos y cada uno va a su pestaña), <i>Abrir reciente</i>, un resultado de búsqueda, un enlace a <code>.md</code>, un archivo que soltás sobre la ventana o que abrís desde el Explorador. Un archivo que ya está abierto no se abre dos veces: se muestra su pestaña. La pestaña nueva va al lado de la que estás mirando; si esa es un documento sin título vacío (o el de ejemplo, sin tocar), se usa esa en vez de agregar otra.</td></tr>
-<tr><td>Pestaña de vista previa</td><td>Un clic en un archivo del panel de archivos (o en Favoritos o Recientes) lo muestra en una <b>pestaña de paso</b>, con el nombre en <i>cursiva</i>: el próximo archivo en el que hagas clic ahí ocupa su lugar, así recorrer una carpeta no deja una pestaña por archivo. La pestaña queda como una común apenas escribís en ella, o con un doble clic en el archivo o en la pestaña. Los archivos abiertos de cualquier otra forma van a una pestaña común. <i>Archivo → Pestaña de vista previa para los archivos del panel</i> lo apaga (viene activado).</td></tr>
+<tr><td>Abrir un archivo en una pestaña</td><td>Cualquier forma de abrir un archivo: un clic en el panel de archivos, un favorito, <i>Archivo → Abrir…</i> (elige varios archivos juntos y cada uno va a su pestaña), <i>Abrir reciente</i>, un resultado de búsqueda, un enlace a <code>.md</code>, un archivo que sueltas sobre la ventana o que abres desde el Explorador. Un archivo que ya está abierto no se abre dos veces: se muestra su pestaña. La pestaña nueva va al lado de la que estás mirando; si esa es un documento sin título vacío (o el de ejemplo, sin tocar), se usa esa en vez de agregar otra.</td></tr>
+<tr><td>Pestaña de vista previa</td><td>Un clic en un archivo del panel de archivos (o en Favoritos o Recientes) lo muestra en una <b>pestaña de paso</b>, con el nombre en <i>cursiva</i>: el próximo archivo en el que hagas clic ahí ocupa su lugar, así recorrer una carpeta no deja una pestaña por archivo. La pestaña queda como una común apenas escribes en ella, o con un doble clic en el archivo o en la pestaña. Los archivos abiertos de cualquier otra forma van a una pestaña común. <i>Archivo → Pestaña de vista previa para los archivos del panel</i> lo apaga (viene activado).</td></tr>
 <tr><td>Pestaña nueva</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd>, <i>Archivo → Nueva pestaña</i> o el <b>+</b> del extremo derecho de la franja: un documento sin título.</td></tr>
 <tr><td>Cambiar de pestaña</td><td>Un clic en la pestaña, o <kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>Tab</kbd> (también <kbd>Ctrl</kbd>+<kbd>AvPág</kbd> / <kbd>Ctrl</kbd>+<kbd>RePág</kbd>). Cuando ya no entran, la rueda del mouse sobre la franja la desplaza, y el botón <b>⌄</b> las lista todas.</td></tr>
 <tr><td>Cerrar</td><td><kbd>Ctrl</kbd>+<kbd>W</kbd>, <i>Archivo → Cerrar pestaña</i>, la <b>×</b> de la pestaña o un clic del medio sobre ella. Una pestaña con cambios sin guardar pregunta antes (con el autoguardado activado, un archivo con nombre simplemente se guarda). Al cerrar la última queda un documento sin título vacío. <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>T</kbd> (<i>Archivo → Reabrir la pestaña cerrada</i>) recupera la última que cerraste.</td></tr>
-<tr><td>Mover</td><td>Arrastrá la pestaña a lo largo de la franja.</td></tr>
+<tr><td>Mover</td><td>Arrastra la pestaña a lo largo de la franja.</td></tr>
 <tr><td>Clic derecho en una pestaña</td><td><b>Cerrar pestaña</b>, <b>Cerrar las otras pestañas</b>, <b>Cerrar las pestañas de la derecha</b>, <b>Cerrar todas las pestañas</b>, <b>Reabrir la pestaña cerrada</b>, <b>Copiar ruta</b>, <b>Mostrar en la carpeta</b> y <b>Reabrir las pestañas al iniciar</b>.</td></tr></table>
 <p><b>Cerrar la ventana</b> cierra todas las pestañas; las que tienen cambios sin guardar se muestran y preguntan de a una, y <i>Cancelar</i> deja la
-ventana abierta. Para encontrarlas la próxima vez, activá <b>Archivo → Reabrir las pestañas al iniciar</b> (apagado de entrada): el próximo arranque
+ventana abierta. Para encontrarlas la próxima vez, activa <b>Archivo → Reabrir las pestañas al iniciar</b> (apagado de entrada): el próximo arranque
 abre los mismos archivos, en el mismo orden y con la misma pestaña a la vista. La lista se guarda a medida que cambian las pestañas, así que también
 sobrevive a un cuelgue o a un corte de luz. Los documentos sin título no se guardan, y un archivo que ya no existe se deja afuera. Cada instancia
 dedicada recuerda sus propias pestañas; una ventana extra (<i>Archivo → Nueva ventana</i>) nunca escribe encima de las de la ventana principal.</p>
 <p>Las opciones de vista son las mismas para todas las pestañas: modo, solo lectura, ancho del texto, ortografía, tema, idioma y zoom. Una pestaña
-que no estás mirando toma el cambio cuando la volvés a mostrar. Si otro programa cambia el archivo de una pestaña oculta, la pestaña lo recarga
-(o pregunta, si tiene cambios sin guardar) cuando la mostrás. Cambiar de nombre o mover un archivo desde el panel de archivos se lleva su pestaña.</p>
+que no estás mirando toma el cambio cuando la vuelves a mostrar. Si otro programa cambia el archivo de una pestaña oculta, la pestaña lo recarga
+(o pregunta, si tiene cambios sin guardar) cuando la muestras. Cambiar de nombre o mover un archivo desde el panel de archivos se lleva su pestaña.</p>
 """),
    ("Carpetas: el panel de archivos", f"""
 <p>Como VS Code u Obsidian, Vigía muestra carpetas como árboles a la izquierda: subcarpetas y archivos Markdown
-(<code>.md</code>, <code>.markdown</code>). Podés tener <b>varias carpetas abiertas a la vez</b>; cada una es un bloque con su propio
-color pastel y una franja en el borde izquierdo, así ves de un vistazo dónde termina un árbol y empieza el siguiente. Hacés clic en un archivo y se abre al costado.</p>
-<figure><img src="{img('files_panel_light.png')}" style="width:260px"><figcaption>Dos carpetas abiertas; el archivo abierto queda marcado.</figcaption></figure>
-<figure><img src="{img('files_favorites_es_light.png')}" style="width:260px"><figcaption>Favoritos: una sola lista para todas las carpetas, primera en el panel; un archivo que ya no está se ve en gris.</figcaption></figure>
+(<code>.md</code>, <code>.markdown</code>). Puedes tener <b>varias carpetas abiertas a la vez</b>; cada una es un bloque con su propio
+color pastel y una franja en el borde izquierdo, así ves de un vistazo dónde termina un árbol y empieza el siguiente. Haces clic en un archivo y se abre al costado.</p>
+<div class="figrow"><figure><img src="{img('files_panel_light.png')}" style="width:260px"><figcaption>Dos carpetas abiertas; el archivo abierto queda marcado.</figcaption></figure>
+<figure><img src="{img('files_favorites_es_light.png')}" style="width:260px"><figcaption>Favoritos: una sola lista para todas las carpetas, primera en el panel; un archivo que ya no está se ve en gris.</figcaption></figure></div>
 <figure><img src="{img('layout_picker_es_light.png')}" style="width:500px"><figcaption>El panel del botón de disposición: todas las disposiciones dibujadas; un clic la aplica.</figcaption></figure>
 <table><tr><th>Acción</th><th>Cómo</th></tr>
-<tr><td>Abrir una carpeta</td><td>El botón <b>+</b> del panel, <i>Archivo → Abrir carpeta…</i>, el botón <b>Abrir carpeta…</b> del panel vacío, arrastrando una carpeta a la ventana, o con clic derecho sobre una carpeta en el Explorador → <i>Abrir con Vigía</i> (opción del instalador; en Windows 11 está en <i>Mostrar más opciones</i>). Cada carpeta nueva se agrega debajo de las otras.</td></tr>
+<tr><td>Abrir una carpeta</td><td>El botón <b>+</b> del panel, <i>Archivo → Abrir carpeta…</i>, el botón <b>Abrir carpeta…</b> del panel vacío, arrastrando una carpeta a la ventana, o con clic derecho sobre una carpeta en el Explorador → <i>Abrir con Vigía</i> (opción del instalador; en Windows 11 está en <i>Mostrar más opciones</i>). Cada carpeta nueva se agrega debajo de las otras. Para cerrar una, clic derecho en su título → <b>Cerrar esta carpeta</b>; <i>Archivo → Cerrar todas las carpetas</i> vacía el panel (no se borra nada del disco).</td></tr>
 <tr><td>Mostrar / ocultar el panel</td><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>E</kbd>, el botón de carpeta de la barra (el tercero), o <i>Ver → Panel de archivos</i>. Comparte la barra lateral con el índice: los archivos arriba y el índice abajo. Arrastrando el borde derecho de la barra se ensancha, y arrastrando la línea entre los dos cambia cuánto alto tiene cada uno; las dos medidas se recuerdan. Cada instancia dedicada recuerda su propia disposición.</td></tr>
-<tr><td>Disposición</td><td>El <b>botón de disposición</b>, en el extremo derecho de la barra, es un dibujito de la disposición actual. Un clic abre un panel con las seis disposiciones dibujadas: archivos e índice a la izquierda (uno arriba del otro o lado a lado), uno a cada lado del texto (en cualquiera de los dos sentidos) o los dos a la derecha. Un clic en un dibujo la aplica en el acto; debajo, <b>Archivos</b>, <b>Índice</b> y <b>Búsqueda</b> prenden o apagan cada panel e <b>Intercambiar archivos e índice</b> les cambia el lugar. <i>Ver → Disposición</i> tiene las mismas opciones. Cada disposición recuerda su propio ancho de barra lateral: arrastrás el borde y esa disposición lo guarda.<br>También podés <b>arrastrar un panel de su título</b> (ARCHIVOS, CONTENIDO o BÚSQUEDA) hasta un costado de la ventana: mientras arrastrás se marcan los dos costados y se rellena el lugar que tomaría el panel, con su nombre (<i>Índice a la derecha</i>, <i>Archivos debajo del índice</i>…). Junto al otro panel, la parte de arriba pone el arrastrado encima, la de abajo debajo y el medio al costado. Soltalo para moverlo; si lo soltás en el medio de la ventana o apretás <kbd>Esc</kbd>, todo queda como estaba.</td></tr>
+<tr><td>Disposición</td><td>El <b>botón de disposición</b>, en el extremo derecho de la barra, es un dibujito de la disposición actual. Un clic abre un panel con las seis disposiciones dibujadas: archivos e índice a la izquierda (uno arriba del otro o lado a lado), uno a cada lado del texto (en cualquiera de los dos sentidos) o los dos a la derecha. Un clic en un dibujo la aplica en el acto; debajo, <b>Archivos</b>, <b>Índice</b> y <b>Búsqueda</b> prenden o apagan cada panel e <b>Intercambiar archivos e índice</b> les cambia el lugar. <i>Ver → Disposición</i> tiene las mismas opciones, y <i>Elegir la disposición con dibujos…</i>, al final, abre el mismo panel. Cada disposición recuerda su propio ancho de barra lateral: arrastras el borde y esa disposición lo guarda.<br>También puedes <b>arrastrar un panel de su título</b> (ARCHIVOS, CONTENIDO o BÚSQUEDA) hasta un costado de la ventana: mientras arrastras se marcan los dos costados y se rellena el lugar que tomaría el panel, con su nombre (<i>Índice a la derecha</i>, <i>Archivos debajo del índice</i>…). Junto al otro panel, la parte de arriba pone el arrastrado encima, la de abajo debajo y el medio al costado. Suéltalo para moverlo; si lo sueltas en el medio de la ventana o presionas <kbd>Esc</kbd>, todo queda como estaba.</td></tr>
 <tr><td>Recorrer</td><td>Clic en una carpeta la abre o la cierra; clic en un archivo lo abre. <kbd>Enter</kbd> hace lo mismo sobre la fila seleccionada.</td></tr>
-<tr><td>Favoritos</td><td>Cada fila de archivo y de carpeta tiene una <b>estrella</b> a la derecha: tenue cuando el puntero está sobre la fila, llena y dorada para un favorito. Un clic en ella (o clic derecho → <b>Agregar a favoritos</b>, o <i>Archivo → Favorito</i> para el archivo abierto) lo suma a <b>FAVORITOS</b>, el primer bloque del panel: una sola lista para todas las carpetas abiertas, con la carpeta de cada archivo en gris. Las carpetas favoritas van primero y se abren como un árbol. Arrastrá un favorito sobre otro para reordenar la lista (o clic derecho → subir / bajar, o quitarlo); clic derecho en el título del bloque para ordenar la lista de la A a la Z, quitar los que ya no existen o vaciarla (los archivos en sí nunca se tocan). Un favorito renombrado o movido desde el panel sigue a su archivo. Un archivo abierto desde Favoritos deja los árboles de carpetas como están: no se despliega ni se desplaza nada (abierto desde su carpeta, el árbol lo sigue).</td></tr>
-<tr><td>Buscar en las carpetas</td><td><i>Ver → Buscar en las carpetas</i>, la lupa de la barra o <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>F</kbd> muestran el panel <b>BÚSQUEDA</b>. Escribí dos letras o más: se busca en todos los archivos Markdown de las carpetas abiertas (los que muestran los árboles) un momento después de que dejás de escribir. Los resultados vienen agrupados por archivo, cada línea con su número y la coincidencia en negrita; un clic abre el archivo justo en esa coincidencia, con la barra de búsqueda mostrándola. <b>Aa</b> distingue mayúsculas. Una búsqueda se corta a los 300 archivos o 5.000 coincidencias (y lo avisa: precisá más). Es un panel como los otros: se ubica con el botón de disposición o arrastrando su título.</td></tr>
+<tr><td>Favoritos</td><td>Cada fila de archivo y de carpeta tiene una <b>estrella</b> a la derecha: tenue cuando el puntero está sobre la fila, llena y dorada para un favorito. Un clic en ella (o clic derecho → <b>Agregar a favoritos</b>, o <i>Archivo → Favorito</i> para el archivo abierto) lo suma a <b>FAVORITOS</b>, el primer bloque del panel: una sola lista para todas las carpetas abiertas, con la carpeta de cada archivo en gris. Las carpetas favoritas van primero y se abren como un árbol. Arrastra un favorito sobre otro para reordenar la lista (o clic derecho → subir / bajar, o quitarlo); clic derecho en el título del bloque para ordenar la lista de la A a la Z, quitar los archivos y carpetas que ya no existen (la opción queda en gris mientras no falte ninguno) o vaciarla (los archivos en sí nunca se tocan). Un favorito renombrado o movido desde el panel sigue a su archivo. Un archivo abierto desde Favoritos deja los árboles de carpetas como están: no se despliega ni se desplaza nada (abierto desde su carpeta, el árbol lo sigue).</td></tr>
+<tr><td>Buscar en las carpetas</td><td><i>Ver → Buscar en las carpetas</i>, la lupa de la barra o <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>F</kbd> muestran el panel <b>BÚSQUEDA</b>. Escribe dos letras o más: se busca en todos los archivos Markdown de las carpetas abiertas (los que muestran los árboles) un momento después de que dejas de escribir. Los resultados vienen agrupados por archivo, cada línea con su número y la coincidencia en negrita; un clic abre el archivo justo en esa coincidencia, con la barra de búsqueda mostrándola. <b>Aa</b> distingue mayúsculas. Una búsqueda se corta a los 300 archivos o 5.000 coincidencias (y lo avisa: afina más). Es un panel como los otros: se ubica con el botón de disposición o arrastrando su título.</td></tr>
 <tr><td>Archivos recientes</td><td>Apagado de entrada. <i>Ver → Archivos recientes en el panel</i> (o el menú ⋯ del panel) agrega un bloque <b>RECIENTES</b> debajo de los favoritos con los últimos ocho archivos abiertos.</td></tr>
 <tr><td>Clic derecho en el título de una carpeta</td><td><i>Nuevo archivo Markdown…</i> y <i>Nueva carpeta…</i>, <b>Fijar arriba</b> / <b>Desfijar</b>, <b>Cerrar esta carpeta</b>, <b>Color</b> (doce colores pastel o <i>Automático</i>), <b>Subir</b> / <b>Bajar</b> (en orden de apertura), abrir en una instancia dedicada, acceso directo en el escritorio, mostrar en la carpeta, copiar ruta, actualizar.</td></tr>
 <tr><td>Nuevo archivo Markdown, nueva carpeta</td><td>Los <b>dos primeros botones de la barra</b> (una hoja y una carpeta con <b>+</b>), o clic derecho sobre una carpeta → <i>Nuevo archivo Markdown…</i> / <i>Nueva carpeta…</i>. Se crean en el disco en el acto, en la carpeta seleccionada en el árbol (o en la del archivo seleccionado); si no hay nada seleccionado, en <code>Documentos\\Vigia</code>, que se crea y se agrega al panel la primera vez. Se ofrece un nombre libre (<i>Documento nuevo.md</i>, <i>Documento nuevo 2.md</i>…); a un archivo sin extensión Markdown se le agrega <code>.md</code> y empieza con su nombre como título. El archivo nuevo se abre enseguida; la carpeta nueva queda seleccionada, así el próximo archivo va adentro. Nunca se escribe encima de nada: un nombre ocupado se rechaza. Los dos botones andan en cualquier modo, también en la vista GitHub y en solo lectura, pero solo con el <b>árbol desbloqueado</b> (el candado de arriba del panel): bloqueado, ellos y las entradas del menú quedan en gris, y al dejar el puntero encima lo avisan.</td></tr>
 <tr><td>Clic derecho dentro de un árbol</td><td>Sobre un archivo: abrir, abrir en otra ventana, mostrar en la carpeta, copiar ruta y <b>Convertir a TXT</b>, que escribe un .txt al lado como se lee el documento en la vista GitHub (títulos, listas, tablas y enlaces en texto plano) y deja el archivo Markdown como está. Sobre una carpeta: nuevo archivo Markdown, nueva carpeta, mostrar en la carpeta, copiar ruta, actualizar. En los dos: <b>Cambiar nombre</b> (también <kbd>F2</kbd>) y <b>Eliminar</b> (también <kbd>Supr</kbd>).</td></tr>
-<tr><td>Eliminar</td><td>Con el <b>árbol desbloqueado</b> (el candado de arriba del panel; bloqueado, <i>Eliminar</i> queda en gris y <kbd>Supr</kbd> no hace nada), clic derecho sobre un archivo o una carpeta → <b>Eliminar</b>, o seleccionarlo y apretar <kbd>Supr</kbd>. Va a la <b>Papelera de reciclaje</b>, de donde se puede recuperar (una carpeta, con todo lo que tiene adentro). Una carpeta de red o un pendrive no tienen Papelera: ahí Vigía pregunta, siempre, si eliminarlo <b>del todo</b>. Vigía pregunta antes; si marcás <i>No volver a preguntar en esta ventana</i>, deja de preguntar hasta que esa ventana se cierra: una ventana nueva, o Vigía abierto de nuevo, vuelve a preguntar. Las pestañas de lo eliminado se cierran, y sale de Favoritos y de Abrir recientes. Las carpetas abiertas mismas (los bloques de color) no se eliminan desde acá: su menú las cierra.</td></tr>
+<tr><td>Eliminar</td><td>Con el <b>árbol desbloqueado</b> (el candado de arriba del panel; bloqueado, <i>Eliminar</i> queda en gris y <kbd>Supr</kbd> no hace nada), clic derecho sobre un archivo o una carpeta → <b>Eliminar</b>, o seleccionarlo y presionar <kbd>Supr</kbd>. Va a la <b>Papelera de reciclaje</b>, de donde se puede recuperar (una carpeta, con todo lo que tiene adentro). Una carpeta de red o una memoria USB no tienen Papelera: ahí Vigía pregunta, siempre, si eliminarlo <b>del todo</b>. Vigía pregunta antes; si marcas <i>No volver a preguntar en esta ventana</i>, deja de preguntar hasta que esa ventana se cierra: una ventana nueva, o Vigía abierto de nuevo, vuelve a preguntar. Las pestañas de lo eliminado se cierran, y sale de Favoritos y de Abrir recientes. Las carpetas abiertas mismas (los bloques de color) no se eliminan desde aquí: su menú las cierra.</td></tr>
 <tr><td>Botones del panel</td><td>Las dos flechas deshacen y rehacen los cambios de nombre y los movimientos; el candado bloquea o desbloquea el árbol para arrastrar; <b>+</b> agregar carpeta, actualizar, <b>contraer todo / expandir todo</b> (un solo botón: mientras haya alguna carpeta abierta las contrae todas; cuando está todo cerrado expande todas las carpetas, todos los niveles; su ícono y su ayuda dicen cuál hace; el menú <b>⋯</b> tiene los dos), y <b>⋯</b>: el orden, los colores y qué se abre al iniciar. Expandir se detiene a las 1.500 carpetas, así un árbol del tamaño de un disco entero no congela la ventana.</td></tr></table>
 <h3>Cambiar de nombre y mover archivos</h3>
 <p>Lo que se hace desde el árbol pasa en el disco. <kbd>F2</kbd> o clic derecho → <b>Cambiar nombre</b> renombra el archivo o la carpeta seleccionada.
-Para mover archivos y carpetas, hacé clic en el <b>candado</b> de la cabecera del panel para desbloquear el árbol y arrastralos sobre una carpeta
-(o sobre un archivo de esa carpeta); mientras arrastrás, la carpeta de destino queda marcada. Otro clic en el candado vuelve a bloquear el árbol, así un
+Para mover archivos y carpetas, haz clic en el <b>candado</b> de la cabecera del panel para desbloquear el árbol y arrástralos sobre una carpeta
+(o sobre un archivo de esa carpeta); mientras arrastras, la carpeta de destino queda marcada. Otro clic en el candado vuelve a bloquear el árbol, así un
 descuido con el mouse no mueve nada. Cada cambio de nombre y cada movimiento se deshace con la flecha <b>←</b> de la cabecera y se rehace con
 <b>→</b>, o con <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> con el foco en el árbol; el globo de ayuda de cada flecha dice qué va a deshacer
 o rehacer. Si el documento abierto cambia de nombre o de lugar, sigue abierto en su lugar nuevo, y antes se guarda si tenía cambios. Las carpetas abiertas
@@ -390,22 +432,23 @@ en sí no se renombran ni se mueven desde el árbol, y un nombre que ya existe e
 una carpeta puede tener su propio color desde su menú de clic derecho.</p>
 <h3>Instancias dedicadas</h3>
 <p>Algunos archivos o carpetas merecen un Vigía propio —una lista de pendientes, una wiki— para que nunca se mezclen con el resto.
-Hacé clic derecho sobre un archivo, o sobre el título de una carpeta, y elegí <b>Abrir en una instancia dedicada</b>, o
+Haz clic derecho sobre un archivo, o sobre el título de una carpeta, y elige <b>Abrir en una instancia dedicada</b>, o
 <b>Acceso directo en el escritorio (instancia dedicada)</b> para tener un acceso que siempre lo abre así. Una instancia dedicada es una ventana
-aparte con su propia configuración, carpetas abiertas, recientes y tamaño; su nombre aparece en la barra de título. Si la abrís de nuevo, se trae
+aparte con su propia configuración, carpetas abiertas, recientes y tamaño; su nombre aparece en la barra de título. Si la abres de nuevo, se trae
 al frente esa ventana en lugar de abrir otra. Arranca con el idioma, el tema y el color de la ventana principal. (Técnicamente:
 <code>Vigia.exe --profile "Nombre" "ruta"</code>; su configuración está en <code>%APPDATA%\\Vigia\\profiles\\Nombre</code>.)</p>
-<p><i>Abrir en otra ventana</i> es distinto: es una ventana extra del Vigía principal. Se puede usar sin problema y nunca pisa las
-carpetas abiertas ni el tamaño de la ventana principal.</p>
+<p>Dentro de una instancia dedicada, <i>Archivo → Nueva ventana</i> y <i>Abrir en otra ventana</i> del panel de archivos abren otra
+ventana de esa misma instancia; en el Vigía principal, abren una ventana extra del principal. Una ventana extra se puede usar sin problema:
+nunca sobrescribe las carpetas abiertas ni el tamaño de la primera ventana.</p>
 <h3>Qué se abre al iniciar Vigía</h3>
 <p>Se elige en <i>Archivo → Carpetas al iniciar</i> o en el botón <b>⋯</b> del panel:</p>
 <table><tr><th>Opción</th><th>Qué pasa</th></tr>
 <tr><td>Reabrir las carpetas de la última sesión</td><td>El panel vuelve tal como lo dejaste (por defecto).</td></tr>
 <tr><td>Empezar limpio, sin carpetas</td><td>Cada arranque empieza con el panel vacío.</td></tr>
-<tr><td>Empezar limpio, solo con las carpetas fijadas</td><td>Cada arranque muestra solo las carpetas que fijaste; por ejemplo, los uno o dos proyectos con los que siempre trabajás.</td></tr></table>
+<tr><td>Empezar limpio, solo con las carpetas fijadas</td><td>Cada arranque muestra solo las carpetas que fijaste; por ejemplo, los uno o dos proyectos con los que siempre trabajas.</td></tr></table>
 <p>El panel sigue al disco: los archivos y carpetas que otros programas crean, renombran o borran (por ejemplo desde el Explorador)
 aparecen o desaparecen enseguida, y el árbol queda donde lo dejaste (guardar un archivo no lo reconstruye). Si se borra una carpeta abierta entera, o se desconecta una unidad de red, su bloque queda con la nota
-<i>no disponible</i> y vuelve solo cuando la carpeta vuelve; si hacés clic en un archivo que se borró mientras tanto, el panel simplemente se actualiza.
+<i>no disponible</i> y vuelve solo cuando la carpeta vuelve; si haces clic en un archivo que se borró mientras tanto, el panel simplemente se actualiza.
 Las carpetas ocultas y las de herramientas (<code>.git</code>, <code>node_modules</code>, <code>bin</code>, <code>obj</code>…) no se muestran.
 Las carpetas recientes aparecen en <i>Archivo → Abrir reciente</i>.</p>
 """),
@@ -420,11 +463,11 @@ Las carpetas recientes aparecen en <i>Archivo → Abrir reciente</i>.</p>
 <tr><td>• lista / 1. lista</td><td>Lista con viñetas / numerada</td><td><code>- ítem</code> / <code>1. ítem</code></td></tr>
 <tr><td>☑</td><td>Lista de tareas</td><td><code>- [ ] tarea</code></td></tr>
 <tr><td>← / →</td><td>Reducir / aumentar sangría</td><td>lista anidada</td></tr>
-<tr><td>Tabla</td><td>Insertar tabla (elegís filas × columnas)</td><td><code>| a | b |</code></td></tr>
+<tr><td>Tabla</td><td>Insertar tabla (eliges filas × columnas)</td><td><code>| a | b |</code></td></tr>
 <tr><td>Imagen</td><td>Insertar imagen por URL o nombre de archivo</td><td><code>![alt](archivo.png)</code></td></tr>
 <tr><td>Enlace</td><td>Insertar enlace</td><td><code>[texto](https://…)</code></td></tr>
 <tr><td>&lt;/&gt;</td><td>Código en línea</td><td><code>`código`</code></td></tr>
-<tr><td>CB</td><td>Bloque de código (elegís el lenguaje para los colores); lo que pegás adentro entra como texto sin formato</td><td><code>```python</code></td></tr></table>
+<tr><td>CB</td><td>Bloque de código (eliges el lenguaje para los colores); lo que pegas adentro entra como texto sin formato</td><td><code>```python</code></td></tr></table>
 <p>Las mismas acciones están en el menú <b>Formato</b>. Con clic derecho dentro de una tabla se agregan o borran filas y columnas, o se alinea una columna.</p>
 """),
    ("Archivos", """
@@ -434,23 +477,25 @@ Las carpetas recientes aparecen en <i>Archivo → Abrir reciente</i>.</p>
 <tr><td>Guardar / Guardar como</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>S</kbd>. Los archivos nuevos se guardan en UTF-8 sin BOM, igual que GitHub; los existentes conservan su codificación y finales de línea.</td></tr>
 <tr><td>Nueva pestaña / Nueva ventana</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd> abre un documento vacío en una pestaña nueva; <i>Nueva ventana</i> abre otro Vigía.</td></tr>
 <tr><td>Mostrar en la carpeta</td><td>Abre el Explorador con el archivo seleccionado.</td></tr></table>
-<p>El <b>autoguardado</b> viene encendido: un archivo con nombre se guarda solo un momento después de que dejás de escribir, y al cerrar su pestaña se guarda sin preguntar. El interruptor <i>Autoguardado</i> de la barra (también <i>Archivo → Autoguardado</i>) lo apaga; entonces solo Guardar escribe el archivo, y si cerrás un documento con cambios sin guardar, Vigía pregunta si querés guardarlos. El autoguardado nunca escribe encima de un cambio hecho por otro programa: Vigía pregunta antes. Un documento nuevo se guarda solo cuando ya tiene nombre.</p>
+<p>El <b>autoguardado</b> viene encendido: un archivo con nombre se guarda solo un momento después de que dejas de escribir, y al cerrar su pestaña se guarda sin preguntar. El interruptor <i>Autoguardado</i> de la barra (también <i>Archivo → Autoguardado</i>) lo apaga; entonces solo Guardar escribe el archivo, y si cierras un documento con cambios sin guardar, Vigía pregunta si quieres guardarlos. El autoguardado nunca escribe encima de un cambio hecho por otro programa: Vigía pregunta antes. Un documento nuevo se guarda solo cuando ya tiene nombre.</p>
 <h3>Imágenes y enlaces</h3>
 <p>Las rutas relativas funcionan como en GitHub: <code>![diagrama](img/diagrama.png)</code> muestra la imagen que está junto al .md.
 En la vista GitHub, los enlaces web se abren en el navegador, los enlaces a otros <code>.md</code> se abren en Vigía y los
 <code>#título</code> saltan dentro del documento.</p>
 """),
    ("Exportar e imprimir", """
-<p><b>Exportar a HTML</b> guarda una sola página HTML autónoma con el estilo de GitHub adentro, lista para mandar por mail o publicar.</p>
-<p><b>Imprimir / PDF</b> (<kbd>Ctrl</kbd>+<kbd>P</kbd>) imprime la página con estilo GitHub. Elegí <i>Guardar como PDF</i> como impresora para sacar un PDF.</p>
+<p><b>Exportar a HTML</b> guarda una sola página HTML autónoma con el estilo de GitHub adentro, lista para enviar por correo o publicar.
+Las imágenes del documento que están en esta computadora van dentro de la página, así se ven en cualquier lugar; las imágenes de la web
+conservan su dirección.</p>
+<p><b>Imprimir / PDF</b> (<kbd>Ctrl</kbd>+<kbd>P</kbd>) imprime la página con estilo GitHub. Elige <i>Guardar como PDF</i> como impresora para sacar un PDF.</p>
 """),
    ("Herramientas de trabajo", """
 <table><tr><th>Función</th><th>Cómo funciona</th></tr>
 <tr><td>Buscar / Reemplazar</td><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>H</kbd> abren una barra sobre el documento. <kbd>F3</kbd> y <kbd>Mayús</kbd>+<kbd>F3</kbd> saltan entre coincidencias; <kbd>Esc</kbd> la cierra. <i>Aa</i> distingue mayúsculas.</td></tr>
 <tr><td>Índice</td><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>O</kbd> o el botón de índice de la barra muestra los títulos en la barra lateral, debajo de los archivos; un clic salta a ese título. Con el panel de archivos oculto, el índice ocupa toda la barra. El botón de disposición, <i>Ver → Disposición</i> o arrastrar su título (CONTENIDO) lo ponen al lado de los archivos, encima de ellos o a cualquiera de los dos lados del texto.</td></tr>
-<tr><td>Se respeta tu formato</td><td>Al guardar sólo se reescribe lo que cambiaste, hasta la parte de la línea que tocaste: viñetas, <code>__negrita__</code>, <code>_cursiva_</code>, etiquetas como <code>&lt;kbd&gt;</code>, alineación de tablas, finales de línea (CRLF/LF) y BOM quedan como estaban.</td></tr>
-<tr><td>Cambios externos</td><td>Si otro programa modifica el archivo abierto, Vigía lo recarga (o pregunta antes si tenés cambios sin guardar) y marca en verde unos segundos lo que cambió: los párrafos nuevos o reescritos, y en una lista o una tabla solo el punto o la fila que se agregó.</td></tr>
-<tr><td>Leer el final</td><td>Si estás al final de una vista cuando otro programa agrega texto abajo, la vista baja con lo nuevo. En cualquier otro lugar te quedás donde estabas.</td></tr>
+<tr><td>Se respeta tu formato</td><td>Al guardar solo se reescribe lo que cambiaste, hasta la parte de la línea que tocaste: viñetas, <code>__negrita__</code>, <code>_cursiva_</code>, etiquetas como <code>&lt;kbd&gt;</code>, alineación de tablas, finales de línea (CRLF/LF) y BOM quedan como estaban.</td></tr>
+<tr><td>Cambios externos</td><td>Si otro programa modifica el archivo abierto, Vigía lo recarga (o pregunta antes si tienes cambios sin guardar) y marca en verde unos segundos lo que cambió: los párrafos nuevos o reescritos, y en una lista o una tabla solo el punto o la fila que se agregó.</td></tr>
+<tr><td>Leer el final</td><td>Si estás al final de una vista cuando otro programa agrega texto abajo, la vista baja con lo nuevo. En cualquier otro lugar te quedas donde estabas.</td></tr>
 <tr><td>Ancho del texto</td><td><i>Ver → Ancho del texto</i>: <b>Normal</b> (980 px, como GitHub), <b>Ancho</b> (1280 px), <b>Muy ancho</b> (1600 px) o <b>Toda la ventana</b>, para las vistas Visual y GitHub. La elección se recuerda por perfil; la impresión y las páginas exportadas mantienen el ancho de GitHub.</td></tr>
 <tr><td>Imágenes</td><td>Al lado del documento o en otra carpeta (<code>../img/a.png</code>). En la vista GitHub también con una ruta absoluta (<code>C:\\Imagenes\\a.png</code>, o <code>\\\\servidor\\carpeta\\a.png</code> cuando esa carpeta de red es la del documento o una abierta en el panel; las demás imágenes de red se bloquean, así un archivo bajado de internet no puede hacer que Windows mande tus credenciales a un servidor) o una dirección <code>file:</code>, con espacios en la ruta, y como <code>![[imagen.png]]</code> o <code>![[imagen.png|300]]</code>, que se buscan en las carpetas abiertas; <code>![alt|300](a.png)</code> fija el ancho. Una imagen que no se encuentra muestra su nombre en un recuadro punteado; un clic en una imagen la abre en su visor.</td></tr>
 <tr><td>Tablas</td><td>Una ruta, una dirección o un código largo dentro de una celda se corta donde hace falta, así la tabla entra en la columna en vez de quedar detrás de una barra de desplazamiento; las palabras comunes quedan enteras. Una tabla de ocho columnas o más lleva menos relleno.</td></tr>
@@ -460,8 +505,9 @@ En la vista GitHub, los enlaces web se abren en el navegador, los enlaces a otro
 <tr><td>Ortografía</td><td>Viene activado, con <b>inglés, español y japonés a la vez</b>: una palabra está bien si alguno de esos idiomas la conoce, así un texto que mezcla idiomas se revisa entero. Las palabras que ningún idioma elegido conoce llevan una línea ondulada roja, en las vistas Visual y Markdown; el código (bloques de código, <code>`código en línea`</code>) y las direcciones no se revisan nunca. <i>Ver → Corrector ortográfico</i> lo activa o desactiva en todas las pestañas abiertas (no se pierde nada de lo escrito). <b>Clic derecho sobre una palabra marcada</b>: primero las sugerencias (un clic reemplaza la palabra), después <i>Omitir (hasta cerrar Vigía)</i>, que deja de marcar esa palabra en todas las pestañas hasta que cierres Vigía, y <i>Agregar al diccionario</i>, que la acepta de ahí en adelante (queda en la configuración de este perfil). <i>Ver → Idiomas y diccionario del corrector…</i> (también al final de ese menú) lo activa o desactiva, elige los idiomas (se pueden marcar varios), muestra las palabras agregadas al diccionario para seleccionarlas y <i>Quitarlas</i>, y <i>Agregar un idioma…</i> acepta cualquier diccionario Hunspell (un archivo <code>.dic</code> con su <code>.aff</code> al lado, como los de LibreOffice y Firefox) para otro idioma. Vigía trae sus propios diccionarios de inglés y español, así que no hay que instalar nada en Windows; el español viene dos veces, el general y el del Uruguay, que conoce el voseo (<i>tenés</i>, <i>mirá</i>), y los dos vienen activados. No existe diccionario ortográfico de japonés (ningún programa revisa la ortografía japonesa): el texto en japonés nunca se marca, y se revisan las palabras en inglés o español que tenga.</td></tr>
 <tr><td>Una sola ventana</td><td>Abrir un .md con Vigía ya abierto trae al frente la ventana existente, con el archivo en una pestaña, en vez de abrir otra copia. <i>Archivo → Nueva ventana</i> sigue abriendo otra.</td></tr>
 <tr><td>Actualizaciones</td><td>Vigía busca una versión nueva una vez por día (una sola vez para todas las instancias dedicadas); <i>Ayuda → Buscar actualizaciones</i> lo hace en el momento. Si hay una, una sola pregunta — <b>Actualizar ahora</b>, <b>Ver novedades</b> o <b>Más tarde</b> — y el resto se hace solo: las sumas de verificación de la versión publicada tienen que traer la firma digital del autor, y el instalador se descarga y se compara con ellas (una versión sin firma válida, o un instalador que no coincide, se rechaza y nunca se ejecuta), se cierran todas las ventanas de Vigía (cada una guarda antes, o pregunta si no puede), la versión nueva se instala en silencio con las mismas opciones y las ventanas se vuelven a abrir, cada una con su perfil, sus archivos y sus pestañas. Si una ventana no se cierra (porque en su pregunta se eligió <i>Cancelar</i>), no se instala nada y las demás vuelven.</td></tr>
+<tr><td>Guía de Markdown</td><td><i>Ayuda → Guía de Markdown (GitHub)</i> abre en el navegador la guía de sintaxis Markdown de GitHub, en el idioma de los menús.</td></tr>
 <tr><td>Acerca de</td><td><i>Ayuda → Acerca de Vigía</i> muestra la versión, el autor, la licencia y los créditos. <i>Copiar info</i> copia los datos de versión, útil para reportar un problema.</td></tr>
-<tr><td>Documento de ejemplo</td><td>Un ejemplo que muestra todas las funciones en las tres vistas. Se abre la primera vez que arrancás el programa y desde <i>Ayuda → Documento de ejemplo</i>, y está fijo arriba de todo en <i>Archivo → Abrir reciente</i>; <i>Ocultar ejemplo</i>, justo debajo, lo saca de esa lista, y <i>Ayuda → Mostrar el ejemplo en Abrir reciente</i> lo vuelve a poner. Se abre como copia sin título, así que el original nunca se pisa, y cambia de idioma junto con los menús.</td></tr></table>
+<tr><td>Documento de ejemplo</td><td>Un ejemplo que muestra todas las funciones en las tres vistas. Se abre la primera vez que inicias el programa y desde <i>Ayuda → Documento de ejemplo</i>, y está fijo arriba de todo en <i>Archivo → Abrir reciente</i>; <i>Ocultar ejemplo</i>, justo debajo, lo saca de esa lista, y <i>Ayuda → Mostrar el ejemplo en Abrir reciente</i> lo vuelve a poner. Se abre como copia sin título, así que el original nunca se sobrescribe, y cambia de idioma junto con los menús.</td></tr></table>
 <h3>Extras de GitHub</h3>
 <p>También se muestran igual que en GitHub: avisos (<code>&gt; [!NOTE]</code>, <code>[!TIP]</code>, <code>[!IMPORTANT]</code>, <code>[!WARNING]</code>, <code>[!CAUTION]</code>),
 diagramas <code>```mermaid</code>, fórmulas (<code>$E=mc^2$</code> y <code>$$ … $$</code>), notas al pie (<code>[^1]</code>) y emojis por código (<code>:rocket:</code>).</p>
@@ -474,7 +520,7 @@ La primera vez, Vigía toma el idioma de Windows.</p>
 el ícono y el resaltado. El color elegido pasa a ser el fondo del ícono en todos lados — ventana, barra de tareas, accesos del
 escritorio y del menú Inicio, archivos <code>.md</code> — y colorea las carpetas del panel de archivos, las marcas de verificación y el elemento seleccionado.
 El color por defecto es el celeste. Los accesos directos que armaste con un ícono propio no se tocan.</p>
-<figure><img src="{img('theme_es_light.png')}" style="width:520px"><figcaption>La ventana de tema.</figcaption></figure>
+<figure><img src="{img('theme_es_light.png')}" style="width:420px"><figcaption>La ventana de tema.</figcaption></figure>
 <p>Zoom con la <b>barra de zoom</b> a la derecha de la barra de estado (−, deslizador, +; clic en el porcentaje vuelve a 100 %), <kbd>Ctrl</kbd> + rueda del mouse, <kbd>Ctrl</kbd>+<kbd>+</kbd>,
 <kbd>Ctrl</kbd>+<kbd>-</kbd> y <kbd>Ctrl</kbd>+<kbd>0</kbd>. Idioma, tema, modo y zoom quedan recordados, y la ventana vuelve a abrirse con el tamaño, el lugar y
 el estado maximizado que tenía al cerrarla (centrada si ese lugar ya no está en ninguna pantalla).</p>
@@ -492,7 +538,28 @@ el estado maximizado que tenía al cerrarla (centrada si ese lugar ya no está e
 <tr><td><kbd>Alt</kbd>+<kbd>F4</kbd></td><td>Cerrar la ventana (todas las pestañas)</td><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>F</kbd></td><td>Buscar en las carpetas</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>H</kbd></td><td>Buscar / Reemplazar</td><td><kbd>F3</kbd> / <kbd>Mayús</kbd>+<kbd>F3</kbd></td><td>Coincidencia siguiente / anterior</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>O</kbd></td><td>Índice</td><td><kbd>Esc</kbd></td><td>Cerrar búsqueda</td></tr>
-<tr><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>E</kbd></td><td>Panel de archivos</td><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd></td><td>Solo lectura / Editar</td></tr></table>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>E</kbd></td><td>Panel de archivos</td><td><kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd></td><td>Solo lectura / Editar</td></tr>
+<tr><td><kbd>F2</kbd></td><td>Cambiar nombre (panel de archivos)</td><td><kbd>Supr</kbd></td><td>Eliminar (panel de archivos, árbol desbloqueado)</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Deshacer / rehacer un cambio de nombre o un movimiento (en el árbol)</td><td><kbd>Ctrl</kbd> + rueda</td><td>Zoom</td></tr></table>
+"""),
+   ("Solución de problemas", """
+<table><tr><th>Qué pasa</th><th>Qué hacer</th></tr>
+<tr><td>Al iniciar: <i>Hace falta Microsoft Edge WebView2 Runtime</i></td><td>Vigía dibuja sus páginas con WebView2, que viene con Windows 11 y con un Windows 10 actualizado. Instala el runtime Evergreen desde <code>https://go.microsoft.com/fwlink/p/?LinkId=2124703</code> y vuelve a abrir Vigía.</td></tr>
+<tr><td>El instalador no funciona en esta PC</td><td>Vigía es solo para Windows 10/11 en x64 (Intel o AMD de 64 bits); no hay versión para procesadores ARM.</td></tr>
+<tr><td>Windows SmartScreen advierte sobre el instalador</td><td>Si lo descargaste de la página Releases del proyecto, elige <i>Más información → Ejecutar de todas formas</i>. Nunca ejecutes una copia de origen desconocido.</td></tr>
+<tr><td>Los botones de formato están en gris</td><td>Funcionan en las vistas Visual y Markdown con <b>Editar</b> elegido. En la vista GitHub, o en <b>Solo lectura</b>, quedan en gris a propósito: presiona <kbd>Ctrl</kbd>+<kbd>1</kbd> y <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd>.</td></tr>
+<tr><td>Escribo y no pasa nada</td><td>El documento está en <b>Solo lectura</b>; lo dice la barra de estado. Elige <b>Editar</b> en la barra o presiona <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>L</kbd>.</td></tr>
+<tr><td><i>Nuevo archivo Markdown</i>, <i>Nueva carpeta</i> o <i>Eliminar</i> están en gris</td><td>El árbol está bloqueado. Haz clic en el <b>candado</b> de arriba del panel de archivos, y otra vez cuando termines.</td></tr>
+<tr><td><i>Otro programa modificó «…». ¿Recargarlo y perder los cambios sin guardar?</i></td><td>Otro programa escribió el archivo mientras tenías cambios sin guardar. <b>Recargar</b> muestra su versión (la tuya se pierde); <b>Conservar mis cambios</b> deja tu texto, y el próximo guardado lo escribe encima de la otra versión.</td></tr>
+<tr><td>Una carpeta del panel dice <i>no disponible</i></td><td>La carpeta se borró o cambió de nombre, o no está su unidad de red o su memoria USB. El bloque vuelve solo cuando vuelve la carpeta; si ya no existe, ciérralo desde su menú de clic derecho.</td></tr>
+<tr><td>Una imagen muestra solo su nombre en un recuadro punteado</td><td>El archivo no está donde dice el enlace. Las imágenes de otra computadora (<code>\\\\servidor\\carpeta</code>) solo se ven si esa carpeta es la del documento o una abierta en el panel de archivos: ábrela en el panel.</td></tr>
+<tr><td>Un enlace abre el Explorador en vez del archivo</td><td>Es a propósito: los enlaces solo abren páginas web, correo, archivos Markdown, imágenes y PDF. Cualquier otro archivo se muestra en el Explorador, nunca se ejecuta.</td></tr>
+<tr><td>Las palabras en japonés nunca se subrayan</td><td>No existe diccionario ortográfico de japonés; se revisan las palabras en inglés y en español de un texto japonés. Las marcas se ven en las vistas Visual y Markdown, no en la vista GitHub.</td></tr>
+<tr><td>Vigía se cerró de golpe</td><td>Ábrelo de nuevo: ofrece recuperar cada documento sin guardar. El error queda en <code>error.log</code>, en la carpeta de configuración; <i>Ayuda → Acerca de Vigía → Copiar info</i> copia los datos de versión para reportarlo.</td></tr>
+<tr><td>Se rechazó una actualización</td><td>Si la firma o la suma de verificación del instalador descargado no coincide, no se instala nada y el instalador se borra: prueba más tarde o instala desde la página Releases. <i>Otra ventana de Vigía no se cerró</i>: ciérrala (o responde su pregunta) y busca de nuevo.</td></tr>
+<tr><td><i>No se pudo buscar actualizaciones</i></td><td>La búsqueda necesita llegar a github.com. Prueba de nuevo cuando ande la conexión; Vigía además busca solo una vez por día.</td></tr>
+<tr><td>Falta <i>Abrir con Vigía</i> en el clic derecho de una carpeta</td><td>En Windows 11 está en <i>Mostrar más opciones</i>. Si tampoco está ahí, ejecuta de nuevo el instalador y marca <i>Agregar «Abrir con Vigía» a las carpetas en el Explorador</i>.</td></tr>
+<tr><td>La configuración se ve mal</td><td>Un <code>settings.json</code> dañado se reemplaza solo por el guardado anterior (<code>settings.json.bak</code>). Para empezar de cero, cierra todas las ventanas de Vigía y cámbiale el nombre a la carpeta <code>%APPDATA%\\Vigia</code>; una instancia dedicada tiene la suya en <code>profiles</code>.</td></tr></table>
 """),
    ("Información técnica", """
 <table><tr><th>Ítem</th><th>Detalle</th></tr>
@@ -500,11 +567,11 @@ el estado maximizado que tenía al cerrarla (centrada si ese lugar ya no está e
 <tr><td>Licencia</td><td>GNU GPL versión 2 únicamente (GPL-2.0-only) — software libre, sin garantía. Texto completo: <code>LICENSE.txt</code> en la carpeta del programa.</td></tr>
 <tr><td>Plataforma</td><td>Windows 10/11 en x64 (Intel o AMD de 64 bits); no hay versión para ARM. .NET 10 (WPF, autónomo) + Microsoft Edge WebView2</td></tr>
 <tr><td>Página del proyecto</td><td>github.com/Gabriel-Castiglia/vigia-windows</td></tr>
-<tr><td>Editor</td><td>TOAST UI Editor 3.2 (MIT)</td></tr>
-<tr><td>Render GitHub</td><td>marked (GitHub Flavored Markdown), highlight.js, github-markdown-css (MIT); DOMPurify (MPL-2.0) limpia el HTML</td></tr>
+<tr><td>Línea de comandos</td><td><code>Vigia.exe [archivo o carpeta…]</code> los abre (una carpeta va al panel de archivos); <code>--profile "Nombre"</code> abre una instancia dedicada; <code>--new-window</code>, una ventana extra.</td></tr>
+<tr><td>Componentes de terceros</td><td>TOAST UI Editor 3.2, ProseMirror, marked (GitHub Flavored Markdown), github-markdown-css, Mermaid, KaTeX, gemoji, WeCantSpell.Hunspell, .NET / WPF (MIT); highlight.js, jsdiff (BSD-3-Clause); DOMPurify (MPL-2.0), que limpia el HTML; Microsoft Edge WebView2 SDK (licencia de Microsoft). Diccionarios: SCOWL / Hunspell en_US (tipo MIT / BSD) y RLA-ES (GPL / LGPL / MPL), con sus licencias en la carpeta <code>dict</code> del programa.</td></tr>
 <tr><td>Ícono</td><td>Un faro dibujado para Vigía (2026), bajo la GPL-2.0 como el resto.</td></tr>
 <tr><td>Configuración</td><td><code>%APPDATA%\\Vigia\\settings.json</code> (una instancia dedicada: <code>%APPDATA%\\Vigia\\profiles\\&lt;nombre&gt;</code>), con el guardado anterior en <code>settings.json.bak</code>, que se lee si el archivo está dañado; los errores inesperados, en <code>error.log</code> en la misma carpeta.</td></tr>
-<tr><td>Código fuente</td><td><code>src/</code> en la carpeta del proyecto; se compila con <code>build.ps1</code>.</td></tr></table>
+<tr><td>Código fuente</td><td>En la página del proyecto (<code>src/</code>); <code>build.ps1</code> compila el programa, los manuales y el instalador.</td></tr></table>
 <div class="note">El editor visual normaliza algunos detalles al escribir el Markdown (por ejemplo, las listas con <code>*</code>
 pasan a <code>-</code>). El texto y cómo lo muestra GitHub no cambian.</div>
 """),
@@ -515,9 +582,72 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import manual_ja
 T["ja"] = manual_ja.build(img)
 
+# ------------------------------------------------------------------ menu reference, read from the program's own text
+# The names come from src/Vigia/Strings.cs and StringsJa.cs, so the manual always says what the menus say.
+def ui_strings():
+    import re
+    src = root / "src" / "Vigia"
+    plain = lambda s: re.sub(r"\(_[A-Za-z0-9]\)", "", s).replace("_", "").replace("\\n", " ")
+    out = {"en": {}, "es": {}, "ja": {}}
+    t = (src / "Strings.cs").read_text(encoding="utf-8")
+    for m in re.finditer(r'\["([^"]+)"\]\s*=\s*\("((?:[^"\\]|\\.)*)",\s*"((?:[^"\\]|\\.)*)"\)', t):
+        out["en"][m.group(1)] = plain(m.group(2)); out["es"][m.group(1)] = plain(m.group(3))
+    t = (src / "StringsJa.cs").read_text(encoding="utf-8")
+    for m in re.finditer(r'\["([^"]+)"\]\s*=\s*"((?:[^"\\]|\\.)*)"', t):
+        out["ja"][m.group(1)] = plain(m.group(2))
+    return out
+
+# (key, shortcut) or (key, [submenu keys or literal names]); the order of MainWindow.xaml.cs BuildMenu
+MENUS = [
+    ("File", [("New", "Ctrl+N"), ("NewWindow", ""), ("TabClose", "Ctrl+W"), ("TabReopen", "Ctrl+Shift+T"), ("Open", "Ctrl+O"),
+              ("OpenDir", ""), ("Recent", ["SampleItem", "SampleHide", "RecentClear"]), ("CloseDir", ""), ("FavCurrent", ""),
+              ("StartupMenu", ["StartupRestore", "StartupClean", "StartupPinned"]), ("RestoreTabs", ""), ("PreviewTab", ""),
+              ("Save", "Ctrl+S"), ("SaveAs", "Ctrl+Shift+S"), ("AutoSave", ""), ("ExportHtml", ""), ("Print", "Ctrl+P"),
+              ("OpenFolder", ""), ("Exit", "Alt+F4")]),
+    ("Edit", [("Undo", "Ctrl+Z"), ("Redo", "Ctrl+Y"), ("Find", "Ctrl+F"), ("Replace", "Ctrl+H"), ("FindNext", "F3")]),
+    ("Format", [("Bold", "Ctrl+B"), ("Italic", "Ctrl+I"), ("Strike", ""), ("Code", ""),
+                ("Heading", ["=H1", "=H2", "=H3", "=H4", "=H5", "=H6", "Paragraph"]), ("Quote", ""), ("Ul", ""), ("Ol", ""),
+                ("Task", ""), ("CodeBlock", ""), ("Hr", "")]),
+    ("View", [("ModeVisual", "Ctrl+1"), ("ModeSource", "Ctrl+2"), ("ModePreview", "Ctrl+3"), ("ReadOnly", "Ctrl+Shift+L"),
+              ("ThemeMenu", ""), ("ZoomIn", "Ctrl++"), ("ZoomOut", "Ctrl+-"), ("ZoomReset", "Ctrl+0"), ("Files", "Ctrl+Shift+E"),
+              ("Outline", "Ctrl+Shift+O"), ("SearchPanelMenu", "Ctrl+Shift+F"), ("RecentPanelMenu", ""),
+              ("Layout", ["LayoutLeftRows", "LayoutLeftCols", "LayoutSplitFiles", "LayoutSplitOutline", "LayoutRightRows",
+                          "LayoutRightCols", "LayoutSwap", "LayoutPicker"]),
+              ("TextWidth", ["WidthNormal", "WidthWide", "WidthWider", "WidthFull"]), ("Spell", ""), ("SpellLangs", "")]),
+    ("Language", [("=English", ""), ("=Español", ""), ("=日本語", "")]),
+    ("Help", [("Manual", "F1"), ("Sample", ""), ("SampleInRecent", ""), ("Guide", ""), ("CheckUpdates", ""), ("About", "")]),
+]
+MENU_REF = {
+    "en": ("Menu reference", "Every entry of the menu bar, with the name and the shortcut the program shows. "
+           "<b>›</b> opens a submenu. <i>Open recent</i> also lists the last files and folders opened."),
+    "es": ("Referencia de menús", "Todas las entradas de la barra de menús, con el nombre y el atajo que muestra el programa. "
+           "<b>›</b> abre un submenú. <i>Abrir reciente</i> lista además los últimos archivos y carpetas que se abrieron."),
+    "ja": ("メニュー一覧", "メニュー バーのすべての項目を、プログラムに表示される名前とショートカットで示します。"
+           "<b>›</b> はサブメニューです。<i>最近使ったファイル</i>には、最後に開いたファイルとフォルダーも並びます。"),
+}
+
+def menu_reference(lang):
+    s = ui_strings()[lang]
+    name = lambda k: k[1:] if k.startswith("=") else s[k]
+    rows = []
+    for top, items in MENUS:
+        cells = []
+        for key, extra in items:
+            if isinstance(extra, list):
+                cells.append(f'<li class="sub"><b>{name(key)}</b> › ' + " · ".join(name(k) for k in extra) + "</li>")
+            else:
+                if lang == "es": extra = extra.replace("Shift+", "Mayús+")   # as the program writes it (Strings.Keys)
+                sc = f'<span class="sc">{extra}</span>' if extra else ""
+                cells.append(f"<li>{name(key)}{sc}</li>")
+        rows.append(f'<tr><td class="menu-top">{name(top)}</td><td><ul class="menu-items">{"".join(cells)}</ul></td></tr>')
+    title, intro = MENU_REF[lang]
+    return title, f"<p>{intro}</p><table class=\"menu-ref\">{''.join(rows)}</table>"
+
 for code, d in T.items():
-    toc = "".join(f"<div>{i}. {name}</div>" for i, (name, _) in enumerate(d["sections"], 1))
-    body = "".join(f"<h2>{i}. {name}</h2>{html.replace('{v}', version)}" for i, (name, html) in enumerate(d["sections"], 1))
+    # the menu reference goes right after the keyboard shortcuts, before Troubleshooting and Technical information
+    d["sections"].insert(len(d["sections"]) - 2, menu_reference(code))
+    toc = "".join(f'<div><a href="#s{i}">{i}. {name}</a></div>' for i, (name, _) in enumerate(d["sections"], 1))
+    body = "".join(f'<h2 id="s{i}">{i}. {name}</h2>{html.replace("{v}", version)}' for i, (name, html) in enumerate(d["sections"], 1))
     page = f"""<!doctype html><html lang="{d['lang']}"><head><meta charset="utf-8"><title>Vigía — {d['title']}</title><style>{CSS}</style></head>
 <body>
 <div class="cover"><img src="{icon}"><h1>Vigía</h1><div class="tag">{d['tag']}</div>

@@ -119,28 +119,35 @@ public static class Accents
         Type? t = Type.GetTypeFromProgID("WScript.Shell");
         if (t == null) return false;
         dynamic shell = Activator.CreateInstance(t)!;
-        foreach (var folder in folders.Where(Directory.Exists))
+        try
         {
-            IEnumerable<string> links;
-            try { links = Directory.EnumerateFiles(folder, "*.lnk", SearchOption.AllDirectories).ToList(); } catch { continue; }
-            foreach (var path in links)
+            foreach (var folder in folders.Where(Directory.Exists))
             {
-                try
+                IEnumerable<string> links;
+                try { links = Directory.EnumerateFiles(folder, "*.lnk", SearchOption.AllDirectories).ToList(); } catch { continue; }
+                foreach (var path in links)
                 {
-                    dynamic lnk = shell.CreateShortcut(path);
-                    string target = lnk.TargetPath ?? "";
-                    if (!target.Equals(exe, StringComparison.OrdinalIgnoreCase)) continue;
-                    string loc = lnk.IconLocation ?? "";
-                    string locPath = loc.Contains(',') ? loc[..loc.LastIndexOf(',')] : loc;
-                    if (!OurIcon(locPath, dir) && !locPath.Equals(exe, StringComparison.OrdinalIgnoreCase)) continue;
-                    if (locPath.Equals(icon, StringComparison.OrdinalIgnoreCase)) continue;
-                    lnk.IconLocation = icon + ",0";
-                    lnk.Save();
-                    changed = true;
+                    object? held = null;
+                    try
+                    {
+                        dynamic lnk = shell.CreateShortcut(path);
+                        held = lnk;
+                        string target = lnk.TargetPath ?? "";
+                        if (!target.Equals(exe, StringComparison.OrdinalIgnoreCase)) continue;
+                        string loc = lnk.IconLocation ?? "";
+                        string locPath = loc.Contains(',') ? loc[..loc.LastIndexOf(',')] : loc;
+                        if (!OurIcon(locPath, dir) && !locPath.Equals(exe, StringComparison.OrdinalIgnoreCase)) continue;
+                        if (locPath.Equals(icon, StringComparison.OrdinalIgnoreCase)) continue;
+                        lnk.IconLocation = icon + ",0";
+                        lnk.Save();
+                        changed = true;
+                    }
+                    catch { }
+                    finally { ReleaseCom(held); }
                 }
-                catch { }
             }
         }
+        finally { ReleaseCom((object)shell); }
         return changed;
     }
 
@@ -168,4 +175,11 @@ public static class Accents
 
     [DllImport("shell32.dll")]
     private static extern void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
+
+    /// <summary>Lets go of a COM object (WScript.Shell and its shortcuts) at once instead of at the next garbage
+    /// collection; null and non-COM objects are ignored.</summary>
+    internal static void ReleaseCom(object? o)
+    {
+        try { if (o != null && Marshal.IsComObject(o)) Marshal.FinalReleaseComObject(o); } catch { }
+    }
 }

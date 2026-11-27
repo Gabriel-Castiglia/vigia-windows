@@ -695,10 +695,18 @@
   let findTimer = null;
   function scheduleFind() { clearTimeout(findTimer); findTimer = setTimeout(() => runFind(0, true), 150); }
 
-  function pmView() { try { const m = editor.getCurrentModeEditor(); return m && m.view; } catch (e) { return null; } }
+  function pmView() { if (!editor) return null; try { const m = editor.getCurrentModeEditor(); return m && m.view; } catch (e) { return null; } }
+
+  // Lower case that keeps every character's length, so a match found in the folded text sits at the same place in
+  // the original: a letter whose lower case is longer (İ is i + a dot above) takes the first letter of it.
+  function foldCase(s) {
+    let out = '';
+    for (const ch of s) { const l = String.fromCodePoint(ch.toLowerCase().codePointAt(0)); out += l.length === ch.length ? l : ch; }
+    return out;
+  }
 
   function collectPm(view, q, cs) {
-    const res = []; const needle = cs ? q : q.toLowerCase();
+    const res = []; const needle = cs ? q : foldCase(q);
     view.state.doc.descendants((node, pos) => {
       if (!node.isTextblock) return true;
       let text = '', map = [];
@@ -706,7 +714,7 @@
         if (child.isText) { for (let k = 0; k < child.text.length; k++) map.push(pos + 1 + off + k); text += child.text; }
         else { text += '￼'; map.push(pos + 1 + off); }
       });
-      const hay = cs ? text : text.toLowerCase();
+      const hay = cs ? text : foldCase(text);
       let i = hay.indexOf(needle);
       while (i >= 0 && needle) { res.push({ from: map[i], to: map[i + needle.length - 1] + 1 }); i = hay.indexOf(needle, i + needle.length); }
       return false;
@@ -715,11 +723,11 @@
   }
 
   function collectDom(root, q, cs) {
-    const res = []; const needle = cs ? q : q.toLowerCase();
+    const res = []; const needle = cs ? q : foldCase(q);
     const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = tw.nextNode())) {
-      const hay = cs ? node.data : node.data.toLowerCase();
+      const hay = cs ? node.data : foldCase(node.data);
       let i = hay.indexOf(needle);
       while (i >= 0 && needle) { res.push({ node, start: i, end: i + needle.length }); i = hay.indexOf(needle, i + needle.length); }
     }
@@ -825,13 +833,15 @@
   function replaceCurrent(repl) {
     if (state.mode === 'preview' || state.locked || find.cur < 0) return;
     const v = pmView(); const m = find.matches[find.cur];
+    if (!v || !m) return;   // no editor (it failed on this file: editorFailed)
     v.dispatch(v.state.tr.insertText(repl, m.from, m.to));
     runFind(0, true);
   }
 
   function replaceAll(repl) {
     if (state.mode === 'preview' || state.locked) return 0;
-    const v = pmView(); const ms = collectPm(v, find.query, find.cs);
+    const v = pmView(); if (!v) return 0;
+    const ms = collectPm(v, find.query, find.cs);
     let tr = v.state.tr;
     for (let i = ms.length - 1; i >= 0; i--) tr = tr.insertText(repl, ms[i].from, ms[i].to);
     if (ms.length) v.dispatch(tr);
@@ -1089,6 +1099,8 @@
       tmp.innerHTML = renderGithub(currentText());
       await runRareCode(tmp);
       await runMermaid(tmp);
+      // the document's pictures by their full address (the host writes them into the page: EmbedPictures)
+      tmp.querySelectorAll('img').forEach((img) => { if (/^https:\/\/doc\.local\//i.test(img.src)) img.setAttribute('src', img.src); });
       const body = tmp.innerHTML; tmp.remove();
       post({ type: 'export', title, body, theme: state.theme, math: /class="katex/.test(body) });
     },
@@ -1142,7 +1154,7 @@
     if (state.locked && !(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length)) { e.preventDefault(); e.stopPropagation(); return; }
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
       e.preventDefault(); e.stopPropagation();
-      if (host.postMessageWithAdditionalObjects) host.postMessageWithAdditionalObjects('drop', e.dataTransfer.files);
+      if (host && host.postMessageWithAdditionalObjects) host.postMessageWithAdditionalObjects('drop', e.dataTransfer.files);
     }
   }, true);
 

@@ -627,7 +627,7 @@ public partial class MainWindow
 
     private MenuItem MenuEntryAsync(string text, Func<Task> run, string? gesture = null, bool enabled = true)
     {
-        var mi = new MenuItem { Header = text, IsEnabled = enabled, InputGestureText = gesture ?? "" };
+        var mi = new MenuItem { Header = text, IsEnabled = enabled, InputGestureText = Strings.Keys(gesture ?? "") };
         mi.Click += async (_, _) => { try { await run(); } catch { } };
         return mi;
     }

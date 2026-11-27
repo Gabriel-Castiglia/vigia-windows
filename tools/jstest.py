@@ -40,26 +40,12 @@ Footnote here[^1] :rocket: and $E=mc^2$.
 # a memory file with properties at the top: backslashes, a very long quoted value, nested keys, a list
 fm_sample = (root / "tools" / "frontmatter_sample.md").read_text(encoding="utf-8")
 
-test = """
-<script>
-(async () => {
-  const out = {};
-  try {
-    mdApp.init('en','light','visual',true);
-    mdApp.load(%s, null);
-    out.unchanged_identical = mdApp.getMarkdownPreserving() === %s.replace(/\\r\\n/g,'\\n');
-    // edit only "Paragraph to edit." through ProseMirror
-    const view = ToastEditor && document.querySelector('.ProseMirror') && null;
-    const ed = window.__ed;
-    out.ok = true;
-  } catch (e) { out.err = String(e && e.stack || e); }
-  document.getElementById('out').textContent = JSON.stringify(out);
-})();
-</script>
-"""
-
 def page(extra_js):
     html = (www / "index.html").read_text(encoding="utf-8").replace("https://app.local/", www.as_uri() + "/")
+    # the page's Content-Security-Policy allows only app.local scripts; this harness inlines them from a file, so it
+    # drops the policy (the self-test checks it inside the program)
+    import re
+    html = re.sub(r'<meta http-equiv="Content-Security-Policy"[^>]*>', "", html)
     js = (www / "app.js").read_text(encoding="utf-8").replace("https://app.local/", www.as_uri() + "/")
     fake = "<script>window.chrome={webview:{postMessage:(m)=>{if(m&&m.type==='find')window.__lastFind=m;}}};</script>"
     html = html.replace('<script src="' + www.as_uri() + '/lib/bundle.js"></script>', fake + '<script src="' + www.as_uri() + '/lib/bundle.js"></script>')
@@ -475,6 +461,21 @@ js = """
       && mdApp.words() > 0 && mdApp.getMarkdownPreserving() === SUBT && /After the table/.test(mdApp.getMarkdown());
     if (!out.inline_html_table_visual) out.inline_html_table_seen = JSON.stringify({ ww: ww && ww.textContent, md: mdApp.getMarkdown() });
 
+    // find ignoring case: a letter whose lower case is longer (İ) does not shift the matches after it
+    mdApp.setMode('visual'); mdApp.load('İİ here and HERE.\\n', null);
+    await new Promise(r => setTimeout(r, 100));
+    const replacedN = mdApp.replaceAll('here', false, 'X');
+    const afterFold = mdApp.getMarkdown();
+    mdApp.findClose();
+    mdApp.load('İstanbul, here.\\n', null); mdApp.setMode('preview');
+    await new Promise(r => setTimeout(r, 300));
+    mdApp.find('here', false, 1);
+    const selPreview = String(window.getSelection && window.getSelection());
+    const markedPreview = window.__lastFind && window.__lastFind.total;
+    mdApp.findClose();
+    out.find_fold_keeps_places = replacedN === 2 && afterFold.trim() === 'İİ X and X.' && markedPreview === 1;
+    if (!out.find_fold_keeps_places) out.find_fold_seen = JSON.stringify({ replacedN, afterFold, selPreview, markedPreview });
+
     mdApp.setMode('visual');
   } catch (e) { out.err = String(e && e.stack || e); }
   document.getElementById('out').textContent = JSON.stringify(out);
@@ -493,9 +494,6 @@ function toastView() {
 </script>
 """ % {"orig": json.dumps(original), "fm": json.dumps(fm_sample)}
 
-# capture 'find' messages: chrome.webview is absent, so hook post via a fake host
-fake = "<script>window.chrome={webview:{postMessage:(m)=>{if(m&&m.type==='find')window.__lastFind=m;}}};</script>"
-print(page(fake.replace("</script>", "</script>") + js) if False else "")
-html_inject = fake + js
+# page() puts in a fake host (chrome.webview is absent) that keeps the last 'find' message in window.__lastFind
 res = page(js)
 print(res)

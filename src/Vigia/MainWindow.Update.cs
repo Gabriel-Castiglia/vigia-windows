@@ -28,7 +28,7 @@ public partial class MainWindow
     private static string CheckStamp => Path.Combine(Settings.BaseDir, "update-check.txt");   // one daily check for all the profiles
 
     private EventWaitHandle? _updateSignal;
-    private bool _updating;
+    private bool _updating, _checkingUpdates;
 
     /// <summary>Called from the constructor: every window listens for the signal of a window that is updating.</summary>
     private void InitUpdate()
@@ -71,7 +71,7 @@ public partial class MainWindow
     /// <summary>The hash of one file in a SHA256SUMS.txt ("hash  name" or "hash *name" per line), or null.</summary>
     internal static string? HashFor(string sums, string fileName)
     {
-        foreach (var raw in sums.Split('\n'))
+        foreach (var raw in sums.TrimStart('﻿').Split('\n'))   // a BOM is not white space to Trim
         {
             var line = raw.Trim();
             int sp = line.IndexOfAny(new[] { ' ', '\t' });
@@ -84,8 +84,9 @@ public partial class MainWindow
 
     private async Task CheckUpdatesAsync(bool interactive)
     {
-        if (_updating) return;
+        if (_updating || _checkingUpdates) return;   // one check at a time (the daily one and a click, or two clicks)
         if (!interactive && !DailyCheckDue()) return;
+        _checkingUpdates = true;
         try
         {
             StampCheck();   // even if it fails (no network): at most one try a day
@@ -129,6 +130,7 @@ public partial class MainWindow
         {
             if (interactive) MessageBox.Show(this, string.Format(Strings.Get("UpdateError"), ex.Message), "Vigía", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+        finally { _checkingUpdates = false; }
     }
 
     private static HttpClient NewHttp(TimeSpan timeout)
@@ -280,22 +282,27 @@ public partial class MainWindow
         try { return JsonSerializer.Deserialize<List<string>>(File.ReadAllText(f)) ?? new(); } catch { return new(); }
     }
 
-    /// <summary>Vigia --after-update (run by the installer): reopens every window that was open. The main
-    /// window first, and the others once it is up, so an extra window never takes the main one's place.</summary>
+    /// <summary>Vigia --after-update (run by the installer): reopens every window that was open. The first window of
+    /// each instance (the main one and each dedicated one) first, and the extra windows once their instance is up, so
+    /// an extra window never takes the place of its instance's first window.</summary>
     internal static void RelaunchAfterUpdate()
     {
         var files = SafeFiles(RelaunchDir).Select(f => (File: f, Args: ReadArgs(f))).ToList();
         if (files.Count == 0) { StartSelf("--updated"); return; }
-        bool IsMain(List<string> a) => !a.Contains("--profile") && !a.Contains("--new-window");
-        var main = files.Where(x => IsMain(x.Args)).ToList();
-        foreach (var x in main) StartSelf(x.Args.Append("--updated").ToArray());
-        if (main.Count > 0 && files.Any(x => x.Args.Contains("--new-window")))
+        static string? ProfileOf(List<string> a) { int i = a.IndexOf("--profile"); return i >= 0 && i + 1 < a.Count ? a[i + 1] : null; }
+        var first = files.Where(x => !x.Args.Contains("--new-window")).ToList();
+        var extra = files.Where(x => x.Args.Contains("--new-window")).ToList();
+        foreach (var x in first) StartSelf(x.Args.Append("--updated").ToArray());
+        // the extra windows need the lock of their instance to exist, or the first of them would become that instance
+        var wanted = extra.Select(x => ProfileOf(x.Args)).Where(p => first.Any(f => ProfileOf(f.Args) == p))
+                          .Select(p => @"Local\" + App.InstanceName(p)).Distinct().ToList();
+        var end = DateTime.UtcNow.AddSeconds(15);
+        while (DateTime.UtcNow < end && wanted.Count > 0)
         {
-            // the extra windows need the main one's lock to exist, or the first of them would become the main one
-            var end = DateTime.UtcNow.AddSeconds(15);
-            while (DateTime.UtcNow < end && !Mutex.TryOpenExisting(@"Local\Vigia-" + Environment.UserName, out _)) Thread.Sleep(200);
+            wanted.RemoveAll(name => { if (!Mutex.TryOpenExisting(name, out var m)) return false; m.Dispose(); return true; });
+            if (wanted.Count > 0) Thread.Sleep(200);
         }
-        foreach (var x in files.Where(x => !IsMain(x.Args))) StartSelf(x.Args.Append("--updated").ToArray());
+        foreach (var x in extra) StartSelf(x.Args.Append("--updated").ToArray());
         foreach (var x in files) try { File.Delete(x.File); } catch { }
     }
 }

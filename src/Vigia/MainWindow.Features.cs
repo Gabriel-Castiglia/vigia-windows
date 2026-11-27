@@ -1,11 +1,10 @@
-// Vigia -- main window: live reload, updates and other features.
+// Vigia -- main window: find/replace, outline, live reload, autosave and crash recovery.
 // Copyright (C) 2026 Gabriel Castiglia. Licensed under the GNU GPL, version 2 only.
 // Date: November 10, 2026
 // SPDX-License-Identifier: GPL-2.0-only
 
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -396,29 +395,36 @@ public partial class MainWindow
     }
 
     /// <summary>Called once the first page is ready: offer the drafts left by a Vigia that is no longer running,
-    /// one by one (it had a draft per tab). A draft taken opens in a tab of its own, marked as modified.</summary>
+    /// one by one (it had a draft per tab). A draft taken opens in a tab of its own, marked as modified. A draft and its
+    /// note always go together: both are deleted once answered, and both stay for the next start when taking it failed.</summary>
     private async Task OfferRecoveryAsync()
     {
         if (!Directory.Exists(RecoveryDir)) return;
         foreach (var meta in Directory.GetFiles(RecoveryDir, "*.json"))
         {
             if (_tabs.Any(t => PathCmp.Equals(t.RecoveryId, Path.GetFileNameWithoutExtension(meta)))) continue;   // one of ours
+            var draft = Path.ChangeExtension(meta, ".md");
+            bool keep = false;
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(meta));
-                var r = doc.RootElement;
-                int pid = r.GetProperty("pid").GetInt32();
-                bool alive = false;
-                try { alive = Process.GetProcessById(pid).ProcessName.Equals("Vigia", StringComparison.OrdinalIgnoreCase); } catch { }
-                if (alive) continue;
-                var draft = Path.ChangeExtension(meta, ".md");
-                string? orig = r.GetProperty("path").GetString();
-                var when = r.GetProperty("time").GetDateTime();
+                string? orig; DateTime when;
+                using (var doc = JsonDocument.Parse(File.ReadAllText(meta)))
+                {
+                    var r = doc.RootElement;
+                    int pid = r.GetProperty("pid").GetInt32();
+                    bool alive = false;
+                    try { alive = Process.GetProcessById(pid).ProcessName.Equals("Vigia", StringComparison.OrdinalIgnoreCase); } catch { }
+                    if (alive) { keep = true; continue; }   // its own window still has it
+                    orig = r.GetProperty("path").GetString();
+                    when = r.GetProperty("time").GetDateTime();
+                }
+                if (!File.Exists(draft)) continue;   // finally: the note goes too
                 var name = orig != null ? Path.GetFileName(orig) : Strings.Get("Untitled");
                 var ans = MessageBox.Show(this, string.Format(Strings.Get("Recover"), name, when.ToString("g")), "Vigía",
                     MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (ans == MessageBoxResult.Yes && File.Exists(draft))
+                if (ans == MessageBoxResult.Yes)
                 {
+                    keep = true;   // until it is in a tab: a failure leaves it for the next start
                     var text = File.ReadAllText(draft, Encoding.UTF8);
                     bool ok;
                     if (orig != null && File.Exists(orig)) ok = await OpenPathAsync(orig);   // its tab, or a new one
@@ -428,11 +434,21 @@ public partial class MainWindow
                         await Js($"mdApp.load({Q(text)},{DocBaseJs(orig)})");
                         _path = orig; _dirty = true;
                         RefreshTabs(); UpdateTitle(); UpdateStatus(); Flash(Strings.Get("Recovered"));
+                        keep = false;
                     }
                 }
-                File.Delete(meta); File.Delete(draft);
             }
-            catch { try { File.Delete(meta); } catch { } }
+            catch (Exception ex) { LogError("OfferRecovery", ex); }
+            finally
+            {
+                if (!keep) { try { File.Delete(meta); } catch { } try { File.Delete(draft); } catch { } }
+            }
+        }
+        // a draft whose note is gone (an older version, or a crash between the two writes) can never be offered
+        foreach (var md in Directory.GetFiles(RecoveryDir, "*.md"))
+        {
+            if (File.Exists(Path.ChangeExtension(md, ".json"))) continue;
+            try { if (DateTime.Now - File.GetLastWriteTime(md) > TimeSpan.FromDays(1)) File.Delete(md); } catch { }
         }
     }
 

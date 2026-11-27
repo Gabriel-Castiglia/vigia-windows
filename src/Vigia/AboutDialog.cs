@@ -14,7 +14,7 @@ using System.Windows.Media.Imaging;
 
 namespace Vigia;
 
-/// <summary>About window in the app's own style: icon, version, author, licence and credits (English/Spanish).</summary>
+/// <summary>About window in the app's own style: icon, version, author, licence and credits, in the interface language.</summary>
 public sealed class AboutDialog : Window
 {
     /// <summary>The libraries the app is built with and their licences; {0} is the word "dictionaries" in the

@@ -168,6 +168,8 @@
     </Style>
 
     <Style x:Key="Gm.ToolButton" TargetType="Button">
+        <!-- an icon button is read by its tooltip: its content is a character of the icon font, which Narrator cannot say -->
+        <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}" />
         <Setter Property="Foreground" Value="{DynamicResource Gm.Text}" />
         <Setter Property="FontFamily" Value="{DynamicResource Gm.Icons}" />
         <Setter Property="FontSize" Value="15" />
@@ -201,6 +203,8 @@
     </Style>
 
     <Style x:Key="Gm.ToolToggle" TargetType="ToggleButton">
+        <!-- an icon button is read by its tooltip: its content is a character of the icon font, which Narrator cannot say -->
+        <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}" />
         <Setter Property="Foreground" Value="{DynamicResource Gm.Text}" />
         <Setter Property="FontFamily" Value="{DynamicResource Gm.Font}" />
         <Setter Property="FontSize" Value="12" />

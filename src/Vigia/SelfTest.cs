@@ -104,25 +104,29 @@ public static class SelfTest
                 Layout(tips);
                 Save(tips, Path.Combine(dir, $"tooltips_{sfx}.png"), dark);
 
-                // Files panel: empty, then a small folder with one file selected
+                // Files panel: empty, then a small folder with one file selected. The Files pane alone in its own
+                // layout every time (the drag pictures below leave Contents under it), each picture as tall as what it shows
                 var pane = (FrameworkElement)w.FindName("FilesPane");
+                w.PanesForTest(false);
                 w.TestFolder(null);
                 w.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
-                Save(pane, Path.Combine(dir, $"files_empty_{sfx}.png"));
+                w.UpdateLayout();
+                SavePane(w, pane, Path.Combine(dir, $"files_empty_{sfx}.png"));
                 var demo = DemoFolder();
                 var second = Path.Combine(Path.GetDirectoryName(demo)!, "Website");
                 foreach (var f in new[] { "index.md", "docs/setup.md" }) { var p = Path.Combine(second, f); Directory.CreateDirectory(Path.GetDirectoryName(p)!); if (!File.Exists(p)) File.WriteAllText(p, "# x"); }
                 w.TestFolder(Path.Combine(demo, "Notes", "Projects", "Plan.md"), demo, second);
                 w.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
                 w.UpdateLayout();
-                Save(pane, Path.Combine(dir, $"files_tree_{sfx}.png"));
+                SavePane(w, pane, Path.Combine(dir, $"files_tree_{sfx}.png"));
                 // favourites: two starred files from two folders, and one that is gone
                 w.SetFavoritesForTest(Path.Combine(demo, "Archive"), Path.Combine(demo, "Notes", "Ideas.md"), Path.Combine(second, "docs", "setup.md"), Path.Combine(demo, "Gone.md"));
                 w.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
                 w.UpdateLayout();
-                Save(pane, Path.Combine(dir, $"files_favorites_{sfx}.png"));
+                SavePane(w, pane, Path.Combine(dir, $"files_favorites_{sfx}.png"));
                 w.SetFavoritesForTest();
                 // the layout picker, and a pane being dragged (the place it would take)
+                w.PanesForTest(true);
                 var picker = w.LayoutPickerForTest();
                 picker.Effect = null;   // the shadow widens the bounds to the left and the picture loses its right edge
                 Layout(picker);
@@ -159,6 +163,35 @@ public static class SelfTest
         var hidden = Directory.CreateDirectory(Path.Combine(root, ".obsidian"));
         hidden.Attributes |= FileAttributes.Hidden;
         return root;
+    }
+
+    /// <summary>The Files pane cut to what it shows: the header and the empty-state text, or the header and the whole
+    /// tree, with no scroll bar and no empty space under it.</summary>
+    private static void SavePane(MainWindow w, FrameworkElement pane, string path)
+    {
+        w.UpdateLayout();
+        var empty = (FrameworkElement)w.FindName("FilesEmptyPanel");
+        var tree = (FrameworkElement)w.FindName("FilesTree");
+        double need;
+        if (empty.IsVisible) need = empty.TranslatePoint(new Point(0, empty.ActualHeight), pane).Y + 18;
+        else if (FindChild<ScrollViewer>(tree) is { } sv) need = pane.ActualHeight - sv.ViewportHeight + sv.ExtentHeight;
+        else need = pane.ActualHeight;
+        pane.Height = Math.Ceiling(need);
+        w.UpdateLayout();
+        Save(pane, path);
+        pane.Height = double.NaN;
+        w.UpdateLayout();
+    }
+
+    private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var c = VisualTreeHelper.GetChild(parent, i);
+            if (c is T t) return t;
+            if (FindChild<T>(c) is { } deeper) return deeper;
+        }
+        return null;
     }
 
     private static void Layout(FrameworkElement el)

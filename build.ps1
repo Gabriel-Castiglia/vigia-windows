@@ -30,7 +30,7 @@ if (-not $SkipNpm) {
     # every highlight.js language, loaded only when a code block needs one bundle.js lacks (app.js runRareCode)
     npx esbuild hljs-all.js --bundle --minify --format=iife --outfile="$www/lib/hljs-all.js"
     if ($LASTEXITCODE) { throw "esbuild hljs-all.js failed" }
-    # TOAST UI 3.2.2 reads the first row of a <tbody> without checking that there is one, so a table with an
+    # TOAST UI 3.2.2 and 3.2.3 read the first row of a <tbody> without checking that there is one, so a table with an
     # empty <tbody> (pandoc writes one for every one-row table) threw and left the page blank. Patched here;
     # the build stops if the code it fixes is not found exactly once.
     $bundle = "$www/lib/bundle.js"; $js = [IO.File]::ReadAllText($bundle)
@@ -88,14 +88,35 @@ if ($LASTEXITCODE) { throw "dotnet publish failed" }
 New-Item -ItemType Directory -Force "$pub/docs" | Out-Null
 Copy-Item "$root/docs/Vigia_Manual_EN.pdf", "$root/docs/Vigia_Manual_ES.pdf", "$root/docs/Vigia_Manual_JA.pdf" "$pub/docs/"
 
-# Optional code signing: set GM_SIGN_PFX (path to a .pfx) and GM_SIGN_PASS before building.
+# Optional code signing, with either of:
+#   GM_SIGN_THUMBPRINT  the SHA-1 thumbprint of a certificate already in the personal store (Cert:\CurrentUser\My);
+#                       nothing secret is needed at all
+#   GM_SIGN_PFX (path to a .pfx) and GM_SIGN_PASS
+# The password never goes on signtool's command line, where other programs could read it: the .pfx is put in the
+# personal store for the signing only (unless it was already there) and signtool picks it by its thumbprint.
 function Sign($file) {
-    if (-not $env:GM_SIGN_PFX) { return }
+    if (-not $env:GM_SIGN_THUMBPRINT -and -not $env:GM_SIGN_PFX) { return }
     $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
         Where-Object { $_.FullName -match "x64" } | Select-Object -Last 1
     if (-not $signtool) { throw "signtool.exe not found (install the Windows SDK)" }
-    & $signtool.FullName sign /f $env:GM_SIGN_PFX /p $env:GM_SIGN_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $file
-    if ($LASTEXITCODE) { throw "signing failed: $file" }
+    $thumb = ($env:GM_SIGN_THUMBPRINT -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
+    $imported = $false
+    if (-not $thumb) {
+        $pass = if ($env:GM_SIGN_PASS) { ConvertTo-SecureString $env:GM_SIGN_PASS -AsPlainText -Force } else { New-Object System.Security.SecureString }
+        $thumb = (Get-PfxData -FilePath $env:GM_SIGN_PFX -Password $pass).EndEntityCertificates[0].Thumbprint
+        if (-not (Test-Path "Cert:\CurrentUser\My\$thumb")) {
+            Import-PfxCertificate -FilePath $env:GM_SIGN_PFX -CertStoreLocation Cert:\CurrentUser\My -Password $pass | Out-Null
+            $imported = $true
+        }
+    }
+    elseif (-not (Test-Path "Cert:\CurrentUser\My\$thumb")) { throw "GM_SIGN_THUMBPRINT: no certificate $thumb in Cert:\CurrentUser\My" }
+    try {
+        & $signtool.FullName sign /sha1 $thumb /s My /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $file
+        if ($LASTEXITCODE) { throw "signing failed: $file" }
+    }
+    finally {
+        if ($imported) { Remove-Item "Cert:\CurrentUser\My\$thumb" -DeleteKey -ErrorAction SilentlyContinue }
+    }
 }
 Sign "$pub/Vigia.exe"
 

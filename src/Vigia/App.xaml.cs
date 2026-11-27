@@ -12,7 +12,12 @@ namespace Vigia;
 public partial class App : Application
 {
     // One running instance per profile: the main one, and each dedicated instance (--profile "Name").
-    private static string PipeName => "Vigia-" + Environment.UserName + (Settings.Profile == null ? "" : "-p-" + Settings.SafeName(Settings.Profile).ToLowerInvariant());
+    // The same name is the lock of that instance ("Local\" + name) and the pipe its files are handed over by.
+    private static string PipeName => InstanceName(Settings.Profile);
+
+    /// <summary>The name of the instance of a profile (null: the main one). MainWindow.Update.cs waits on its lock.</summary>
+    internal static string InstanceName(string? profile) =>
+        "Vigia-" + Environment.UserName + (profile == null ? "" : "-p-" + Settings.SafeName(profile.Trim()).ToLowerInvariant());
     private Mutex? _mutex;
 
     /// <summary>--profile "Name" or --profile=Name: a dedicated instance with its own settings and session.</summary>

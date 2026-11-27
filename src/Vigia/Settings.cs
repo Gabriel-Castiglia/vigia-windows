@@ -35,7 +35,19 @@ public sealed class Settings
     /// <summary>Folder colours: "theme" (tones of the theme colour), "multi" or "none".</summary>
     public string FolderColors { get; set; } = "theme";
     /// <summary>Colour chosen by hand for a folder: path → hue in degrees.</summary>
-    public Dictionary<string, string> FolderColorMap { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> FolderColorMap
+    {
+        get => _folderColorMap;
+        set
+        {
+            // kept case-insensitive: the JSON reader hands over a dictionary of its own, which was not
+
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (k, v) in value ?? new()) map[k] = v;   // two spellings of one path: the last one wins, never a throw
+            _folderColorMap = map;
+        }
+    }
+    private Dictionary<string, string> _folderColorMap = new(StringComparer.OrdinalIgnoreCase);
     public List<string> RecentFolders { get; set; } = new();
     public bool FilesPanel { get; set; } = true;   // open by default, as the sidebar of the macOS version
     public double FilesWidth { get; set; } = 260;       // 2.1: width of the sidebar (Files over Contents), 180 to 700
@@ -129,7 +141,9 @@ public sealed class Settings
     public static string SafeName(string name)
     {
         var bad = Path.GetInvalidFileNameChars();
-        var s = new string(name.Trim().Select(c => bad.Contains(c) ? '_' : c).ToArray());
+        // Windows drops final dots and spaces from a folder name, and "." or ".." would be the main settings folder
+        // (or its parent): such a name must not become another profile's folder
+        var s = new string(name.Trim().Select(c => bad.Contains(c) ? '_' : c).ToArray()).TrimEnd('.', ' ');
         return string.IsNullOrWhiteSpace(s) ? "profile" : s;
     }
 
@@ -211,7 +225,7 @@ public sealed class Settings
                 s.Folder = null; s.Folders = new(); s.PinnedFolders = new(); s.Recent = new(); s.RecentFolders = new();
                 s.OpenTabs = new(); s.ActiveTab = 0;
                 s.FilesPanel = false; s.SampleShown = true; s.StartupFolders = "restore";
-                return s;
+                return s.Upgraded();
             }
         }
         catch { /* corrupt settings: start fresh */ }

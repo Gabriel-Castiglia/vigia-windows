@@ -23,6 +23,7 @@ public sealed class ChoiceDialog : Window
         _choice = cancel;
 
         var lines = text.Split('\n', 2);
+        Title = lines[0];   // the window has no title bar; this is the name Narrator reads for it
         var stack = new StackPanel { Width = 400 };
         var head = new TextBlock
         {

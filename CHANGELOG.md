@@ -2,6 +2,50 @@
 
 English · [Español](CHANGELOG.es.md) · [日本語](CHANGELOG.ja.md)
 
+## 3.6.0 — 2026-11-27
+
+- **File → New window in a dedicated instance** opens another window of that same instance; it opened an extra
+  window of the main Vigía. After an automatic update, those extra windows come back as windows of their instance
+  too (one could take the place of the instance's first window).
+- **A click on a picture stored on another computer** (`\\server\share\…`) in the GitHub view opens it only when the
+  page may show it — the document's folder or a folder open in the Files panel —, the same rule as for showing it.
+  Before, the click reached any server, and Windows could send it your credentials.
+- **Favourites: *Remove the ones that no longer exist*** also removed favourite folders that still exist; it now
+  removes only the files and folders that are gone, and it is greyed out while nothing is missing.
+- *Help → Check for updates* no longer runs twice at once (a double click, or a click during the daily check), so the
+  update question cannot appear twice.
+- *Desktop shortcut (dedicated instance)* works for a whole drive (`D:\`): the final backslash broke the shortcut.
+- A colour chosen for one folder (right-click → *Colour*) is kept after a restart even when the path is written with
+  other capitals.
+- A recent file that no longer exists leaves *File → Open recent* whatever the case of its letters, and the list is
+  saved.
+- *Export to HTML* shows an error when the program's stylesheets cannot be read, instead of doing nothing.
+- *Replace* and *Replace all* no longer report a count in a file the editor could not open.
+- **Screen readers**: the buttons that show only an icon (the Files panel header, a tab's ×, the new tab and tab list
+  buttons, the arrows and the close button of the find bar, zoom − and +, the layout button, ⋯) have names for
+  Narrator, taken from their tooltips.
+- On a Japanese Windows the standard menu of text boxes (Cut, Copy, Paste) and the other built-in texts of the window
+  are in Japanese.
+- **Spanish addresses the reader as *tú*** across the interface, the sample document, the manuals and the README (it
+  used the voseo), and its shortcuts say **Mayús**, as a Spanish keyboard does: `Ctrl+Mayús+S`, `Mayús+F3`.
+- **Open in a new window**, in the Files panel of a dedicated instance, opens the window in that same instance, as
+  *File → New window* does; it opened an extra window of the main Vigía.
+- **Export to HTML** puts the document's pictures that are on this computer inside the page, so the exported page
+  shows them anywhere; pictures from the web keep their address.
+- **Find ignoring case** no longer shifts the mark in a paragraph with a letter whose lower case is longer (such as
+  the Turkish «İ»): the text looked for is marked and replaced, not the one beside it.
+- **Recovery**: a draft chosen for recovery that could not be opened stays for the next start, and no loose drafts
+  are left in the recovery folder.
+- The editor page has a Content Security Policy: only the program's own scripts run.
+- The *Spell check languages and dictionary* dialog opens at once: the dictionaries are read in the background.
+- Vigía's questions have a name for Narrator.
+- Build: code signing takes a certificate from the personal store by its thumbprint (`GM_SIGN_THUMBPRINT`), and the
+  password of a `.pfx` no longer goes on signtool's command line.
+- Documentation: the README in three files (English, Spanish, Japanese). The manuals add a menu reference taken from
+  the program's own text, a troubleshooting section, every third-party component, the command line, page numbers and
+  a contents that links to each section; the screenshots were taken again from this version, with the sample in the
+  language of each manual, and those of the Files panel come out whole, with no cropping.
+
 ## 3.5.4 — 2026-11-27
 
 - **The GitHub view follows GitHub in two more cases**, with marked 18.3.0 (it was 15.0.12): a loose tilde used as

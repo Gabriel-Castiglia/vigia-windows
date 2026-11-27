@@ -2,6 +2,52 @@
 
 [English](CHANGELOG.md) · Español · [日本語](CHANGELOG.ja.md)
 
+## 3.6.0 — 2026-11-27
+
+- **Archivo → Nueva ventana en una instancia dedicada** abre otra ventana de esa misma instancia; abría una ventana
+  extra del Vigía principal. Después de una actualización automática, esas ventanas extra también vuelven como
+  ventanas de su instancia (una podía ocupar el lugar de la primera ventana de la instancia).
+- **Un clic en una imagen guardada en otra computadora** (`\\servidor\carpeta\…`) en la vista GitHub solo la abre
+  cuando la página puede mostrarla —la carpeta del documento o una carpeta abierta en el panel de archivos—, la misma
+  regla que para mostrarla. Antes el clic llegaba a cualquier servidor, y Windows podía mandarle tus credenciales.
+- **Favoritos: *Quitar los que ya no existen*** también quitaba las carpetas favoritas que sí existen; ahora quita
+  solo los archivos y carpetas que faltan, y queda en gris mientras no falte ninguno.
+- *Ayuda → Buscar actualizaciones* ya no corre dos veces a la vez (doble clic, o un clic durante la búsqueda diaria),
+  así que la pregunta de actualización no puede aparecer dos veces.
+- *Acceso directo en el escritorio (instancia dedicada)* funciona para una unidad entera (`D:\`): la barra invertida
+  final rompía el acceso directo.
+- El color elegido para una carpeta (clic derecho → *Color*) se conserva después de reiniciar aunque la ruta esté
+  escrita con otras mayúsculas.
+- Un archivo reciente que ya no existe sale de *Archivo → Abrir reciente* sin importar las mayúsculas, y la lista se
+  guarda.
+- *Exportar a HTML* muestra un error cuando no se pueden leer las hojas de estilo del programa, en vez de no hacer
+  nada.
+- *Reemplazar* y *Reemplazar todo* ya no informan una cantidad en un archivo que el editor no pudo abrir.
+- **Lectores de pantalla**: los botones que solo muestran un ícono (la cabecera del panel de archivos, la × de una
+  pestaña, los botones de pestaña nueva y de lista de pestañas, las flechas y el botón de cerrar de la barra de
+  búsqueda, el − y el + del zoom, el botón de disposición, ⋯) tienen nombre para el Narrador, tomado de su ayuda.
+- En un Windows en japonés, el menú estándar de los cuadros de texto (Cortar, Copiar, Pegar) y los demás textos
+  propios de la ventana salen en japonés.
+- **El español trata de tú** en toda la interfaz, el documento de ejemplo, los manuales y el README (usaba el voseo),
+  y los atajos dicen **Mayús**, como el teclado en español: `Ctrl+Mayús+S`, `Mayús+F3`.
+- **Abrir en otra ventana**, en el panel de archivos de una instancia dedicada, abre la ventana en esa misma
+  instancia, como *Archivo → Nueva ventana*; abría una ventana extra del Vigía principal.
+- **Exportar a HTML** pone dentro de la página las imágenes del documento que están en esta computadora, así la
+  página exportada las muestra en cualquier lugar; las imágenes de la web conservan su dirección.
+- **Buscar sin distinguir mayúsculas** ya no corre la marca en un párrafo con una letra cuya minúscula es más larga
+  (como la «İ» turca): se marca y se reemplaza el texto buscado, no el que está al lado.
+- **Recuperación**: un borrador que se eligió recuperar y no se pudo abrir queda para el próximo arranque, y ya no
+  quedan borradores sueltos en la carpeta de recuperación.
+- La página del editor tiene una política de seguridad de contenido: solo corren los scripts del propio programa.
+- El cuadro *Idiomas y diccionario del corrector* se abre al instante: los diccionarios se leen en segundo plano.
+- Las preguntas de Vigía tienen nombre para el Narrador.
+- Compilación: la firma del código acepta un certificado del almacén personal por su huella (`GM_SIGN_THUMBPRINT`), y
+  la contraseña de un `.pfx` ya no va en la línea de comandos de signtool.
+- Documentación: el README en tres archivos (inglés, español y japonés). Los manuales suman una referencia de menús
+  tomada de los textos del propio programa, una sección de solución de problemas, todos los componentes de terceros,
+  la línea de comandos, números de página y un índice que lleva a cada sección; las capturas se hicieron de nuevo
+  con esta versión, con el ejemplo en el idioma de cada manual, y las del panel de archivos salen enteras, sin recortes.
+
 ## 3.5.4 — 2026-11-27
 
 - **La vista GitHub sigue a GitHub en dos casos más**, con marked 18.3.0 (era la 15.0.12): una tilde suelta usada como
@@ -47,7 +93,7 @@
   Markdown…*, *Nueva carpeta…* y *Eliminar* del menú de clic derecho quedan en gris, y la tecla Supr no hace nada. Al
   dejar el puntero sobre una de ellas avisa que hay que desbloquear el árbol para habilitarla. La ayuda del candado
   nombra las tres cosas que desbloquea.
-- **Una carpeta de red o un pendrive no tienen Papelera de reciclaje**: ahí eliminar es del todo, y ahora la pregunta
+- **Una carpeta de red o una memoria USB no tienen Papelera de reciclaje**: ahí eliminar es del todo, y ahora la pregunta
   lo dice (*¿Eliminar … del todo?*), siempre, aun después de *No volver a preguntar en esta ventana*. La 3.5.0 decía
   que el elemento iba a la Papelera también ahí.
 - Acerca de Vigía da crédito al corrector ortográfico: WeCantSpell.Hunspell y sus diccionarios (SCOWL en_US, RLA-ES),
@@ -89,7 +135,7 @@
   están bien. Un diccionario agregado a mano que no incluya ese apóstrofo ahora también acepta esas palabras.
 - **Actualizaciones firmadas con cualquiera de las dos claves del autor** (la de la PC o la de la Mac): todas las apps
   de Windows del autor revisan ahora el mismo `release.sig` (`ReleaseSignature.cs`). Un Vigía 3.3.0 conoce solo la
-  primera clave, así que ofrece la página de esta versión en vez de instalarla: instalá la 3.3.1 a mano una vez.
+  primera clave, así que ofrece la página de esta versión en vez de instalarla: instala la 3.3.1 a mano una vez.
 - *Agregar un idioma…* lee el diccionario antes de copiarlo: uno que no se puede leer ya no queda en la lista como
   idioma faltante, ni reemplaza a un diccionario bueno del mismo nombre.
 - Un documento con más de 5000 palabras desconocidas distintas dejaba sin revisar las que pasaban de 5000 hasta que se
@@ -129,7 +175,7 @@
   del autor (`release.sig`), verificada contra una clave incluida en Vigía, antes de descargar el instalador; una
   versión sin firma válida se rechaza y nunca se ejecuta (igual se puede descargar a mano desde su página).
 - **Página más liviana**: la vista GitHub trae los ~40 lenguajes comunes de highlight.js (más PowerShell, batch y
-  Dockerfile) en vez de todos; un bloque de código en cualquier otro lenguaje carga el juego completo recién entonces.
+  Dockerfile) en vez de todos; un bloque de código en cualquier otro lenguaje carga el juego completo solo entonces.
   `bundle.js` pasa de 2,5 MB a cerca de 1,5 MB, así cada página arranca más rápido.
 - El corrector propio del navegador se apaga en su perfil (cargaba diccionarios que nadie usaba).
 - Los manuales de usuario (inglés, español, japonés) explican el corrector, la pestaña de vista previa y las
@@ -145,7 +191,7 @@
 - **`Ctrl+Z` justo después de abrir un archivo vaciaba el documento**, y el autoguardado escribía después un solo salto
   de línea encima del archivo: la carga del texto quedaba en el historial de deshacer. Ahora se borra después de abrir
   un archivo o de recargarlo desde el disco, así deshacer solo devuelve lo que se escribió.
-- **Guardar escribe el archivo de una sola vez**: el texto va a un archivo temporal al lado, llega al disco y recién
+- **Guardar escribe el archivo de una sola vez**: el texto va a un archivo temporal al lado, llega al disco y solo
   entonces ocupa el lugar del viejo (se conservan atributos y permisos). Un corte de luz, un cuelgue o un antivirus en
   medio de un guardado deja la versión vieja o la nueva, nunca un archivo vacío o cortado. Los borradores de
   recuperación y `settings.json` se escriben igual; `settings.json.bak` guarda la configuración anterior y se lee si
@@ -229,7 +275,7 @@ The Met, CC0). El repositorio ahora es `vigia-windows` (GitHub redirige la direc
   que hay en `%APPDATA%\Gryphmark` pasa a `%APPDATA%\Vigia`: la configuración, los perfiles de las instancias
   dedicadas, los borradores de recuperación. La carpeta vieja queda intacta.
 - El programa es `Vigia.exe` en `%LOCALAPPDATA%\Programs\Vigia`; el instalador es `Vigia-Setup-<versión>.exe`.
-- Lo que iba a traer la 2.2.1 también está acá:
+- Lo que iba a traer la 2.2.1 también está aquí:
   - Buscar en las carpetas: un clic en un resultado en la vista Visual o GitHub ahora cae justo en esa coincidencia.
     Las coincidencias se cuentan en el texto del archivo, y esas vistas esconden parte de él (direcciones de enlaces,
     etiquetas): en un archivo con las palabras dentro de la dirección de un enlace, el clic iba a una coincidencia
@@ -250,7 +296,7 @@ The Met, CC0). El repositorio ahora es `vigia-windows` (GitHub redirige la direc
   busca una palabra o una frase en todos los archivos Markdown de las carpetas abiertas, los mismos que muestran los
   árboles. Los resultados vienen agrupados por archivo, cada línea con su número y la coincidencia en negrita; un clic
   abre el archivo justo en esa coincidencia, con la barra de búsqueda mostrándola. Distingue mayúsculas a pedido;
-  busca un momento después de que dejás de escribir y se detiene a los 300 archivos o 5.000 coincidencias. Es un panel
+  busca un momento después de que dejas de escribir y se detiene a los 300 archivos o 5.000 coincidencias. Es un panel
   como el de archivos y el índice: en cualquier lugar, con el botón de disposición o arrastrando su título.
 - Tres paneles, cualquiera de ellos de cualquier lado, uno arriba del otro o lado a lado; cada lado guarda su propia
   distribución y el orden de sus paneles, con un divisor entre cada dos.
@@ -334,8 +380,8 @@ Windows y macOS ahora comparten un mismo número de versión: esta es la 2.0.0 e
 - **Enlaces [[nombre]]**, como en la Mac: en la vista GitHub, `[[nombre]]`, `[[nombre|texto]]` y `[[nombre#título]]`
   abren el archivo Markdown de ese nombre en las carpetas abiertas (gana el más cercano); un nombre sin archivo se ve en
   rojo.
-- **Si leés el final, seguís el final**: cuando otro programa agrega texto al final del archivo y estabas al final de la
-  vista, la vista baja con lo nuevo, como en una terminal. En cualquier otro lugar te quedás donde estabas.
+- **Si lees el final, sigues el final**: cuando otro programa agrega texto al final del archivo y estabas al final de la
+  vista, la vista baja con lo nuevo, como en una terminal. En cualquier otro lugar te quedas donde estabas.
 - Una autoprueba en la ventana real, fuera de la vista (`--self-test <log>`): DPI por monitor, la barra lateral, el
   autoguardado y su interruptor, la recarga en vivo y sus marcas verdes, los enlaces [[nombre]].
 
@@ -364,7 +410,7 @@ Windows y macOS ahora comparten un mismo número de versión: esta es la 2.0.0 e
 
 ## 1.10.0 — 2026-11-13
 
-- **Autoguardado**, activado de entrada: un archivo con nombre se guarda solo 1,5 segundos después de que dejás de
+- **Autoguardado**, activado de entrada: un archivo con nombre se guarda solo 1,5 segundos después de que dejas de
   escribir. Un interruptor en la barra, y Archivo → Autoguardado, lo prenden y lo apagan. Nunca escribe encima de un
   cambio hecho por otro programa (la recarga en vivo pregunta antes), ni un documento nuevo sin título: ese se guarda
   solo cuando ya tiene nombre. Cerrar una ventana o abrir otro archivo guarda sin preguntar cuando el autoguardado está
@@ -381,7 +427,7 @@ Windows y macOS ahora comparten un mismo número de versión: esta es la 2.0.0 e
 
 - **Convertir a TXT**: clic derecho en un archivo del panel de archivos. Se escribe un .txt al lado como se lee el
   documento en la vista GitHub: títulos subrayados, listas con viñetas o números, tablas en columnas, enlaces con su
-  dirección. El archivo Markdown no cambia, y un .txt que ya existe nunca se pisa (`nombre (2).txt`).
+  dirección. El archivo Markdown no cambia, y un .txt que ya existe nunca se sobrescribe (`nombre (2).txt`).
 - El índice se puede ensanchar arrastrando su borde derecho (de 160 a 600 px), como ya pasaba con el panel de
   archivos; cada ventana recuerda su ancho.
 
@@ -511,7 +557,7 @@ Windows y macOS ahora comparten un mismo número de versión: esta es la 2.0.0 e
 
 - Documento de ejemplo instalado con el programa (inglés y español, archivo oculto en `samples\`): se abre en el primer
   arranque, desde **Ayuda → Documento de ejemplo**, y está fijo arriba de todo en **Archivo → Abrir reciente**, donde
-  un clic derecho lo oculta. Se abre como copia sin título, así el archivo instalado nunca se pisa, y cambia de idioma
+  un clic derecho lo oculta. Se abre como copia sin título, así el archivo instalado nunca se sobrescribe, y cambia de idioma
   junto con la interfaz.
 - Cerrar oculta la ventana enseguida; el editor se desarma detrás.
 - La revisión diaria de actualizaciones se recuerda aunque falle, así ya no corre en cada arranque.

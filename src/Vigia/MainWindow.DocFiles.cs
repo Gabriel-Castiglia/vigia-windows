@@ -107,6 +107,31 @@ public partial class MainWindow
         catch (Exception ex) { LogError("OnDocRequest", ex); }
     }
 
+    /// <summary>An exported page's pictures from this computer, written into it as data: addresses, so the page shows
+    /// them anywhere: a doc.local address means nothing outside Vigía. A ![[name]] is looked for as the page does; a
+    /// picture that is missing, not allowed (PictureAllowed) or over 25 MB keeps its address.</summary>
+    private string EmbedPictures(string body, string? docPath)
+    {
+        string? docDir = docPath != null ? Path.GetDirectoryName(docPath) : null;
+        var panel = _roots.ToList();
+        return System.Text.RegularExpressions.Regex.Replace(body, @"<img\b[^>]*>", m =>
+        {
+            var tag = m.Value;
+            var src = System.Text.RegularExpressions.Regex.Match(tag, @"\ssrc=""([^""]*)""");
+            if (!src.Success) return tag;
+            try
+            {
+                var file = DocPath(System.Net.WebUtility.HtmlDecode(src.Groups[1].Value));
+                if ((file == null || !File.Exists(file)) && System.Text.RegularExpressions.Regex.Match(tag, @"\sdata-embed=""([^""]*)""") is { Success: true } embed)
+                    file = Wiki.FindFile(System.Net.WebUtility.HtmlDecode(embed.Groups[1].Value), docDir, panel);
+                if (file == null || !IsPicture(file) || !PictureAllowed(file, docPath) || !File.Exists(file) || new FileInfo(file).Length > 25_000_000) return tag;
+                var data = $"data:{Mime[Path.GetExtension(file)]};base64,{Convert.ToBase64String(File.ReadAllBytes(file))}";
+                return tag[..src.Groups[1].Index] + data + tag[(src.Groups[1].Index + src.Groups[1].Length)..];
+            }
+            catch { return tag; }   // unreadable: the address stays
+        });
+    }
+
     /// <summary>A ![[name]] picture that did not load beside the document: the file of that name in the open folders.</summary>
     private async Task FindFileAsync(string name)
     {

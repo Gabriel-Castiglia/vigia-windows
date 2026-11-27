@@ -70,6 +70,19 @@ public partial class MainWindow
             Check("japanese: access keys \"(_F)\" are left out of tooltips and buttons", jaPlain && Strings.Plain("Open") == Strings.Get("Open").Replace("_", ""), "");
             Check("japanese: chosen from a Japanese Windows, and listed in the Language menu",
                   Strings.ForCulture("ja") == "ja" && Strings.ForCulture("es") == "es" && Strings.ForCulture("fr") == "en" && Strings.Languages.Any(l => l.Code == "ja"), "");
+            Strings.Lang = "es"; var keysEs = Strings.Keys("Ctrl+Shift+S");
+            Strings.Lang = "ja"; var keysJa = Strings.Keys("Ctrl+Shift+S");
+            Strings.Lang = keepLang;
+            Check("spanish: shortcuts say Mayús, as a Spanish keyboard does (English and Japanese keep Shift)",
+                  keysEs == "Ctrl+Mayús+S" && keysJa == "Ctrl+Shift+S" && !Strings.Get("Prev").Contains("Mayús"), keysEs);
+            // a draft and its note go together: a broken note takes its draft along, and a draft left alone is cleared
+            Directory.CreateDirectory(RecoveryDir);
+            var brokenNote = Path.Combine(RecoveryDir, "selftestbroken.json"); File.WriteAllText(brokenNote, "{ not json");
+            var brokenDraft = Path.ChangeExtension(brokenNote, ".md"); File.WriteAllText(brokenDraft, "text");
+            var lonely = Path.Combine(RecoveryDir, "selftestlonely.md"); File.WriteAllText(lonely, "text");
+            File.SetLastWriteTime(lonely, DateTime.Now.AddDays(-2));
+            await OfferRecoveryAsync();
+            Check("recovery: no draft is left without its note", !File.Exists(brokenNote) && !File.Exists(brokenDraft) && !File.Exists(lonely), "");
             Check("autosave: on by default", new Settings().AutoSave);
             // the window's own shortcuts (focus outside the page) are the page's: Ctrl+Shift+O used to open a file
             const System.Windows.Input.ModifierKeys ctl = System.Windows.Input.ModifierKeys.Control, sh = System.Windows.Input.ModifierKeys.Shift;
@@ -337,6 +350,26 @@ public partial class MainWindow
                   await Js("Array.from(document.querySelectorAll('#preview img, #preview .gm-img-missing')).map(i => (i.src || i.title) + ':' + (i.naturalWidth ?? '-')).join(' ')"));
             Check("pictures: a file that is not a picture, outside the document's reach, is not served",
                   !InReach(Path.Combine(tmp, "auto.md")) && InReach(Path.Combine(pics, "att", "far.png")) && IsPicture(outside), "");
+
+            // the page's Content-Security-Policy leaves alone what documents use: local pictures (above), Mermaid,
+            // KaTeX, the full highlight.js set and a data: picture, with no violation reported
+            await Js("window.__cspv = []; document.addEventListener('securitypolicyviolation', e => window.__cspv.push(e.violatedDirective + ' ' + e.blockedURI))");
+            var cspMd = Path.Combine(pdoc, "csp.md");
+            File.WriteAllText(cspMd, "# CSP\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n$E=mc^2$\n\n```fortran\nprogram p\nend program p\n```\n\n![d](data:image/png;base64,"
+                + Convert.ToBase64String(png) + ")\n");
+            await LoadFileAsync(cspMd);
+            bool cspOk = await WaitFor(async () => await JsInt("(document.querySelector('#preview pre.mermaid svg') ? 1 : 0) + (document.querySelector('#preview .katex') ? 1 : 0)"
+                + " + (document.querySelector('#preview code.language-fortran:not([data-hl-lang]) span') ? 1 : 0)"
+                + " + Array.from(document.querySelectorAll('#preview img')).filter(i => i.src.startsWith('data:') && i.naturalWidth === 2).length") == 4, 15);
+            int cspPolicy = await JsInt("document.querySelector('meta[http-equiv=\"Content-Security-Policy\"]') ? 1 : 0");
+            Check("content security policy: Mermaid, KaTeX, rare languages and data: pictures still work, nothing blocked",
+                  cspOk && cspPolicy == 1 && await JsInt("window.__cspv.length") == 0,
+                  await Js("window.__cspv.join(' | ') + ' svg:' + !!document.querySelector('#preview pre.mermaid svg') + ' katex:' + !!document.querySelector('#preview .katex')"));
+            // an exported page carries the document's pictures inside it; a missing one and a web one keep their address
+            var exported = EmbedPictures($"<p><img src=\"{DocUrl(Path.Combine(pdoc, "here.png"))}\" alt=\"a\"><img data-embed=\"far.png\" src=\"{DocUrl(Path.Combine(pdoc, "far.png"))}\">"
+                + $"<img src=\"{DocUrl(Path.Combine(pdoc, "nothing.png"))}\"><img src=\"https://example.com/x.png\"></p>", pmd);
+            Check("export: local pictures (beside the document and ![[name]]) are written into the page",
+                  System.Text.RegularExpressions.Regex.Matches(exported, "src=\"data:image/png;base64,").Count == 2 && exported.Contains("nothing.png") && exported.Contains("https://example.com/x.png"), exported);
             await SetMode("visual");
             await NewDocAsync();
 

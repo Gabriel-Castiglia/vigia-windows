@@ -444,6 +444,17 @@ public partial class MainWindow
     // ------------------------------------------------------------------ pictures for --render-chrome
     internal FrameworkElement LayoutPickerForTest() => BuildLayoutPicker();
 
+    /// <summary>The Files pane on the left, alone or with Contents under it (the default), the same for every language
+    /// and theme of the pictures.</summary>
+    internal void PanesForTest(bool outline)
+    {
+        _settings.FilesPanel = true;
+        _settings.Outline = outline;
+        _settings.SearchPanel = false;
+        SetLayout("left", "left", "rows", false);
+        UpdateLayout();
+    }
+
     /// <summary>The window's body with the drag guide over it, as seen while a pane is dragged to (fx, fy).</summary>
     internal FrameworkElement DockOverlayForTest(bool files, double fx, double fy)
     {

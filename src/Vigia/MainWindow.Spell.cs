@@ -108,14 +108,18 @@ public partial class MainWindow
         panel.Children.Add(on);
         panel.Children.Add(new TextBlock { Text = Strings.Get("SpellLangsHint"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 6) });
         var langs = new StackPanel { Margin = new Thickness(12, 0, 0, 6) };
-        void FillLangs()
+        int fill = 0;
+        // the boxes at once; whether each dictionary can be read is found off the window's thread (reading one takes a
+        // moment), and "(dictionary missing)" is added to the names when it is known
+        async Task FillLangsAsync()
         {
+            int mine = ++fill;
             langs.Children.Clear();
+            var boxes = new List<(string Code, CheckBox Box)>();
             foreach (var code in SpellChecker.Available())
             {
                 var key = "SpellLang" + code;
                 string name = Strings.Get(key) is { } n && n != key ? n : code;
-                if (SpellChecker.Missing(code)) name += " " + Strings.Get("SpellMissing");
                 var cb = new CheckBox { Content = name, IsChecked = _settings.SpellLangs.Contains(code), Margin = new Thickness(0, 2, 0, 2) };
                 cb.SetResourceReference(ForegroundProperty, "Gm.Text");
                 var c = code;
@@ -127,9 +131,14 @@ public partial class MainWindow
                     await SpellResetAllAsync();
                 };
                 langs.Children.Add(cb);
+                boxes.Add((code, cb));
             }
+            var missing = await Task.Run(() => boxes.Select(b => b.Code).Where(SpellChecker.Missing).ToHashSet());
+            if (mine != fill) return;   // filled again meanwhile
+            foreach (var (code, box) in boxes)
+                if (missing.Contains(code)) box.Content = box.Content + " " + Strings.Get("SpellMissing");
         }
-        FillLangs();
+        _ = FillLangsAsync();
         panel.Children.Add(langs);
         var add = new Button { Content = Strings.Get("SpellAddLang"), HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(12, 0, 0, 14) };
         add.Click += async (_, _) =>
@@ -138,10 +147,11 @@ public partial class MainWindow
             if (dlg.ShowDialog(w) != true) return;
             try
             {
-                var name = SpellChecker.AddUserDictionary(dlg.FileName);
+                var file = dlg.FileName;
+                var name = await Task.Run(() => SpellChecker.AddUserDictionary(file));   // reads the whole dictionary
                 if (!_settings.SpellLangs.Contains(name)) _settings.SpellLangs.Add(name);
                 _settings.Save();
-                FillLangs();
+                await FillLangsAsync();
                 await SpellResetAllAsync();
             }
             catch (Exception ex) { MessageBox.Show(w, string.Format(Strings.Get("SpellAddLangErr"), ex.Message), "Vigía", MessageBoxButton.OK, MessageBoxImage.Warning); }

@@ -614,7 +614,8 @@ public partial class MainWindow
                 if (fromFavorites) _noReveal.Add(path); else _noReveal.Remove(path);   // as a click on the row (Activate)
                 OpenPath(path);
             }),
-            MenuEntry(Strings.Get("OpenNewWindow"), () => StartSelf("--new-window", path)),
+            // an extra window of this instance, as File → New window: a dedicated instance's own profile, or the main one
+            MenuEntry(Strings.Get("OpenNewWindow"), () => { if (Settings.Profile != null) StartSelf("--profile", Settings.Profile, "--new-window", path); else StartSelf("--new-window", path); }),
             MenuEntry(Strings.Get("OpenDedicated"), () => OpenDedicated(path)),
             MenuEntry(Strings.Get("DedicatedShortcut"), () => DedicatedShortcut(path)),
             new Separator(),
@@ -761,23 +762,35 @@ public partial class MainWindow
     /// <summary>Desktop shortcut that always opens this file or folder in its dedicated Vigia.</summary>
     private void DedicatedShortcut(string path)
     {
+        object? shell = null, l = null;
         try
         {
             var name = DedicatedName(path);
             var lnk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), Settings.SafeName(name) + " (Vigía).lnk");
             Type t = Type.GetTypeFromProgID("WScript.Shell")!;
-            dynamic shell = Activator.CreateInstance(t)!;
-            dynamic l = shell.CreateShortcut(lnk);
-            l.TargetPath = Environment.ProcessPath!;
-            l.Arguments = $"--profile \"{name}\" \"{path}\"";
-            l.WorkingDirectory = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
-            l.IconLocation = Environment.ProcessPath! + ",0";   // follows the theme colour (View → Theme)
-            l.Description = "Vigía — " + name;
-            l.Save();
+            shell = Activator.CreateInstance(t)!;
+            dynamic link = ((dynamic)shell).CreateShortcut(lnk);
+            l = link;
+            link.TargetPath = Environment.ProcessPath!;
+            link.Arguments = $"--profile {QuoteArg(name)} {QuoteArg(path)}";
+            link.WorkingDirectory = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
+            link.IconLocation = Environment.ProcessPath! + ",0";   // follows the theme colour (View → Theme)
+            link.Description = "Vigía — " + name;
+            link.Save();
             Accents.ApplyToSystem(_settings.Accent);
             Flash(string.Format(Strings.Get("DedicatedDone"), Path.GetFileName(lnk)));
         }
         catch { Flash(Strings.Get("DedicatedFail")); }
+        finally { Accents.ReleaseCom(l); Accents.ReleaseCom(shell); }   // the shell's objects, not left to the finalizer
+    }
+
+    /// <summary>One command-line argument in quotes. Backslashes before the closing quote are doubled: "D:\" alone
+    /// would read as D:" followed by the rest of the line (a drive's root as a dedicated instance).</summary>
+    internal static string QuoteArg(string a)
+    {
+        int n = 0;
+        while (n < a.Length && a[a.Length - 1 - n] == '\\') n++;
+        return "\"" + a.Replace("\"", "\\\"") + new string('\\', n) + "\"";
     }
 
     private static void StartSelf(params string[] args)
