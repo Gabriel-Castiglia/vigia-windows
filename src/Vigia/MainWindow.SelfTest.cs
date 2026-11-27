@@ -72,9 +72,11 @@ public partial class MainWindow
                   Strings.ForCulture("ja") == "ja" && Strings.ForCulture("es") == "es" && Strings.ForCulture("fr") == "en" && Strings.Languages.Any(l => l.Code == "ja"), "");
             Strings.Lang = "es"; var keysEs = Strings.Keys("Ctrl+Shift+S");
             Strings.Lang = "ja"; var keysJa = Strings.Keys("Ctrl+Shift+S");
+            // the English text keeps Shift whatever the language of this Windows (it failed on a Windows in Spanish)
+            Strings.Lang = "en"; var prevEn = Strings.Get("Prev");
             Strings.Lang = keepLang;
             Check("spanish: shortcuts say Mayús, as a Spanish keyboard does (English and Japanese keep Shift)",
-                  keysEs == "Ctrl+Mayús+S" && keysJa == "Ctrl+Shift+S" && !Strings.Get("Prev").Contains("Mayús"), keysEs);
+                  keysEs == "Ctrl+Mayús+S" && keysJa == "Ctrl+Shift+S" && !prevEn.Contains("Mayús"), keysEs);
             // a draft and its note go together: a broken note takes its draft along, and a draft left alone is cleared
             Directory.CreateDirectory(RecoveryDir);
             var brokenNote = Path.Combine(RecoveryDir, "selftestbroken.json"); File.WriteAllText(brokenNote, "{ not json");
